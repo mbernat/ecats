@@ -1,0 +1,3 @@
+(executable
+    (name ecats)
+    (libraries base stdio))
