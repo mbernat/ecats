@@ -1,0 +1,33 @@
+{
+  "name": "ecats",
+  "version": "0.1.0",
+  "description": "An editor for category theory",
+  "license": "MIT",
+  "esy": {
+    "build": "refmterr dune build -p #{self.name}",
+    "NOTE": "Optional release Section. Customizes result of `esy release`",
+    "release": {
+      "bin": [
+        "Ecats"
+      ]
+    },
+    "buildEnv": {
+      "ODOC_SYNTAX": "re"
+    }
+  },
+  "scripts": {
+    "test": "esy x Ecats",
+    "doc": "esy dune build @doc"
+  },
+  "dependencies": {
+    "@opam/dune": "*",
+    "@esy-ocaml/reason": ">= 3.4.0 < 3.6.0",
+    "refmterr": "*",
+    "ocaml": "~4.6.0"
+  },
+  "devDependencies": {
+    "@opam/merlin": "*",
+    "ocaml": "~4.6.0",
+    "@opam/odoc": "*"
+  }
+}

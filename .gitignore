@@ -1,4 +1,7 @@
 /_opam
 /_build
-/.merlin
+/_release
+/_esy
 /node_modules
+/*.install
+.merlin
