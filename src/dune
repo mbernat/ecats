@@ -1,4 +1,4 @@
 (executable
-    (name Ecats)
-    (public_name Ecats)
-    (libraries console.lib pastel.lib))
+    (name ecats)
+    (public_name ecats)
+    (libraries Revery))
