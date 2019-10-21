@@ -1,6 +1,7 @@
 
 let initialWorld = World.{
-    positions: [{x: 100.0, y: 100.0}]
+    positions: [{x: 100.0, y: 100.0}],
+    graph: G.empty
 }
 
 let init (app: Revery.App.t) = {

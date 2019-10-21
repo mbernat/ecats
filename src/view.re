@@ -60,12 +60,14 @@ module Main {
         time: Unix.tm,
         world: World.t
     };
+    
     let reducer = (action, state) =>
         switch(action) {
             | Click(pos) => {
                 time: state.time,
                 world: {
-                    positions: List.cons(pos, state.world.positions)
+                    positions: List.cons(pos, state.world.positions),
+                    graph: G.addNode({data: pos}, state.world.graph)
                 }
             }
             | UpdateTime => {
@@ -77,6 +79,8 @@ module Main {
     let component = React.component("Main");
     let createElement = (~children as _, ~world, ()) => 
         component(hooks => {
+            let (refOption, setRefOption, hooks) =
+                Hooks.state(None, hooks);
             let (state, dispatch, hooks) =
                 Hooks.reducer(
                     ~initialState={
@@ -102,14 +106,25 @@ module Main {
                 bottom(10),
                 width(200)
             ];
-            let getPosition = e => {
-                open NodeEvents;
-                // TODO work out correct relative coordinates
-                Position.{x: e.mouseX -. 110., y: e.mouseY -. 110.}
+
+            let handleClick = evt =>
+                switch(refOption) {
+                    | Some(ref) => {
+                        open NodeEvents;
+                        let (bbx, bby, _, _) = Math.BoundingBox2d.getBounds(ref#getBoundingBox());
+                        let pos = Position.{x: evt.mouseX -. bbx, y: evt.mouseY -. bby};
+                        dispatch(Click(pos));
+                    }
+                    | None => {
+                        print_endline("Error in Main: ref of the inner view is not set!")
+                    }
             };
             let element = 
                 <View style=outerStyle>
-                    <View style=innerStyle onMouseDown={event => dispatch(Click(getPosition(event)))}>...items</View>
+                    <View
+                        ref={r => setRefOption(Some(r))}
+                        style=innerStyle
+                        onMouseDown=handleClick>...items</View>
                     <View style=timeStyle>
                         <Text text=time style=textStyle />
                     </View>
