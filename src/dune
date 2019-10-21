@@ -2,3 +2,7 @@
     (name ecats)
     (public_name ecats)
     (libraries Revery))
+
+(install
+    (section bin)
+    (files Roboto-Regular.ttf))
