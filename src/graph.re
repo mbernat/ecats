@@ -37,43 +37,34 @@ type list_graph('n_id, 'e_id, 'n, 'e) = {
     edges: list(('e_id, 'e))
 };
 
-type node('a) = {
-    data: 'a
-};
+module Node {
+    type t('a) = {
+        data: 'a
+    }
+}
 
-type edge('node_id, 'a) = {
-    source: 'node_id,
-    target: 'node_id,
-    edge_data: 'a
-};
+module Edge {
+    type t('node_id, 'a) = {
+        source: 'node_id,
+        target: 'node_id,
+        data: 'a
+    }
+}
 
-module type GraphSig {
+module type Sig {
     type node_id;
     type edge_id;
-
     type t('a, 'b);
 
     let empty: t('a, 'b);
-    let addNode: node('a) => t('a, 'b) => t('a, 'b);
-    let addEdge: edge(node_id, 'b) => t('a, 'b) => t('a, 'b);
-    let extract: t('a, 'b) => list_graph(node_id, edge_id, node('a), edge(node_id, 'b))
-}
-
-module type Baz {}
-module Bazaz : Baz {}
-
-module Bar(Baz) {
-type t = {
-    foo: int
-}
-}
-module Bam = Bar(Bazaz);
-
-type x = {foo: int}
+    let addNode: Node.t('a) => t('a, 'b) => t('a, 'b);
+    let addEdge: Edge.t(node_id, 'b) => t('a, 'b) => t('a, 'b);
+    let extract: t('a, 'b) => list_graph(node_id, edge_id, Node.t('a), Edge.t(node_id, 'b))
+};
 
 module ListGraph = (NodeId: Id, EdgeId: Id) 
-: (GraphSig with type node_id := NodeId.t and type edge_id := EdgeId.t) => {
-    type t('a, 'b) = list_graph(NodeId.t, EdgeId.t, node('a), edge(NodeId.t, 'b));
+: (Sig with type node_id := NodeId.t and type edge_id := EdgeId.t) => {
+    type t('a, 'b) = list_graph(NodeId.t, EdgeId.t, Node.t('a), Edge.t(NodeId.t, 'b));
 
     let empty = {nodes: [], edges: []};
 
