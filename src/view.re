@@ -30,8 +30,9 @@ let textStyle =
     color(Colors.black),
   ];
 
-let renderPosition = pos => {
+let renderPosition = ((_id, node)) => {
     open Position;
+    let pos = node.Graph.Node.data;
     let style = Style.[
         backgroundColor(Colors.black),
         position(`Absolute),
@@ -66,7 +67,6 @@ module Main {
             | Click(pos) => {
                 time: state.time,
                 world: {
-                    positions: List.cons(pos, state.world.positions),
                     graph: G.addNode({data: pos}, state.world.graph)
                 }
             }
@@ -98,7 +98,8 @@ module Main {
                     },
                     hooks
                 );
-            let items = List.map(renderPosition, state.world.positions);
+            let lg = G.extract(state.world.graph).nodes;
+            let items : list(React.syntheticElement) = List.map(renderPosition, lg);
             let time = string_of_time(state.time);
             let timeStyle = Style.[
                 position(`Absolute),

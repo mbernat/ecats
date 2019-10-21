@@ -68,7 +68,7 @@ module ListGraph = (NodeId: Id, EdgeId: Id)
 
     let empty = {nodes: [], edges: []};
 
-    let addNode = n => g => {
+    let addNode = (n, g) => {
         let id = NodeId.get();
         {
             nodes: List.cons((id, n), g.nodes),
@@ -76,7 +76,7 @@ module ListGraph = (NodeId: Id, EdgeId: Id)
         }
     }
 
-    let addEdge = e => g => {
+    let addEdge = (e, g) => {
         let id = EdgeId.get();
         {
             nodes: g.nodes,
