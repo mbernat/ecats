@@ -30,7 +30,7 @@ let textStyle =
     color(Colors.black),
   ];
 
-let renderPosition = (sel, (id, node)) => {
+let drawNode = (sel, (id, node)) => {
     open Position;
     let bgColor = switch(sel) {
         | Some((id', _)) => if(id == id') {Colors.red} else {Colors.azure}
@@ -48,6 +48,32 @@ let renderPosition = (sel, (id, node)) => {
     <View style=style>
         <Text style=textStyle text=Graphs.IntId.string_of_id(id) />
     </View>
+}
+
+module ResolvedEdge {
+    open Graphs;
+    type t('a) = {
+        source: (IntId.t, Node.t('a)),
+        target: (IntId.t, Node.t('a))
+    }
+}
+
+// TODO draw a line from `source` to `target` pos using only width
+// position it at source, set width to dist, and rotate towards target
+let drawEdge = ((id, edge)) => {
+    open ResolvedEdge;
+    open Graphs.Node;
+    let (_, s) = edge.source;
+    let (_, t) = edge.target;
+    let style = Style.[
+        backgroundColor(Colors.black),
+        transform([
+            Transform.Rotate(Revery.Math.Angle.from_degrees(30.))
+        ]),
+        width(300),
+        height(5)
+    ];
+    <View style=style />
 }
 
 let string_of_time = tm => {
@@ -136,8 +162,14 @@ module Main {
                     },
                     hooks
                 );
-            let nodes = World.ListGraph.extract(state.world.graph).nodes;
-            let items : list(React.syntheticElement) = List.map(renderPosition(state.world.selectedNode), nodes);
+            let graph = World.ListGraph.extract(state.world.graph);
+            let nodes = List.map(drawNode(state.world.selectedNode), graph.nodes);
+            let s = Graphs.Node.{data: Position.{x: 100., y: 100.}};
+            let t = Graphs.Node.{data: Position.{x: 200., y: 200.}};
+            let id = Graphs.IntId.get();
+            let edge = (1, ResolvedEdge.{source: (id, s), target: (id, t)})
+            let edges = List.map(drawEdge, [edge]);
+            let items = List.append(nodes, edges);
             let time = string_of_time(state.time);
             let timeStyle = Style.[
                 position(`Absolute),
@@ -163,7 +195,9 @@ module Main {
                     <View
                         ref={r => setRefOption(Some(r))}
                         style=innerStyle
-                        onMouseDown=handleClick>...items</View>
+                        onMouseDown=handleClick>
+                        ...items
+                    </View>
                     <View style=timeStyle>
                         <Text text=time style=textStyle />
                     </View>
