@@ -30,18 +30,24 @@ let textStyle =
     color(Colors.black),
   ];
 
-let renderPosition = ((_id, node)) => {
+let renderPosition = (sel, (id, node)) => {
     open Position;
-    let pos = node.Graph.Node.data;
+    let bgColor = switch(sel) {
+        | Some((id', _)) => if(id == id') {Colors.red} else {Colors.azure}
+        | None => Colors.azure
+    };
+    let pos = node.Graphs.Node.data;
     let style = Style.[
-        backgroundColor(Colors.black),
+        backgroundColor(bgColor),
         position(`Absolute),
         left(int_of_float(pos.x)),
         top(int_of_float(pos.y)),
-        width(20),
+        width(40),
         height(30)
     ];
-    <View style=style />
+    <View style=style>
+        <Text style=textStyle text=Graphs.IntId.string_of_id(id) />
+    </View>
 }
 
 let string_of_time = tm => {
@@ -52,8 +58,13 @@ let string_of_time = tm => {
     String.concat(":", [h, m, s]);
 }
 
+let getNodeAtPos = (pos, graph) => {
+    let nodes = World.ListGraph.extract(graph).nodes;
+    let nearby = ((_, n)) => Position.dist(pos, n.Graphs.Node.data) < 100.0
+    List.find_opt(nearby, nodes);
+}
+
 module Main {
-    open World;
     type action =
         | Click(Position.t)
         | UpdateTime;
@@ -65,9 +76,36 @@ module Main {
     let reducer = (action, state) =>
         switch(action) {
             | Click(pos) => {
-                time: state.time,
-                world: {
-                    graph: G.addNode({data: pos}, state.world.graph)
+                let oNode = getNodeAtPos(pos, state.world.graph);
+                let (graph, sel) = switch (oNode) {
+                    | Some((clickedId, node)) => {
+                        let graph = switch(state.world.selectedNode) {
+                            | Some((oldSelId, _)) => {
+                                print_endline(String.concat(" ", [
+                                    "Adding edge between",
+                                    Graphs.IntId.string_of_id(oldSelId),
+                                    Graphs.IntId.string_of_id(clickedId)
+                                ]))
+                                let id = Graphs.IntId.get();
+                                let edge = Graphs.Edge.{source: oldSelId, target: clickedId, data: ()}
+                                World.ListGraph.addEdge(id, edge, state.world.graph);
+                            }
+                            | None => state.world.graph
+                        };
+                        (graph, Some((clickedId, node)))
+                    }
+                    | None => {
+                        let id = Graphs.IntId.get();
+                        let graph = World.ListGraph.addNode(id, {data: pos}, state.world.graph);
+                        (graph, Some((id, {data: pos})));
+                    }
+                };
+                {
+                    time: state.time,
+                    world: {
+                        graph: graph,
+                        selectedNode: sel
+                    }
                 }
             }
             | UpdateTime => {
@@ -98,8 +136,8 @@ module Main {
                     },
                     hooks
                 );
-            let lg = G.extract(state.world.graph).nodes;
-            let items : list(React.syntheticElement) = List.map(renderPosition, lg);
+            let nodes = World.ListGraph.extract(state.world.graph).nodes;
+            let items : list(React.syntheticElement) = List.map(renderPosition(state.world.selectedNode), nodes);
             let time = string_of_time(state.time);
             let timeStyle = Style.[
                 position(`Absolute),

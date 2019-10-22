@@ -1,6 +1,7 @@
 
 let initialWorld = World.{
-    graph: G.empty
+    graph: ListGraph.empty,
+    selectedNode: None
 }
 
 let init (app: Revery.App.t) = {

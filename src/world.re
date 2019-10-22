@@ -1,5 +1,7 @@
-module G = Graph.ListGraph(Graph.IntId, Graph.IntId);
+module ListGraph = Graphs.ListBased(Graphs.IntId, Graphs.IntId);
+type posListGraph = ListGraph.t(Position.t, unit);
 
 type t = {
-    graph: G.t(Position.t, unit)
+    graph: posListGraph,
+    selectedNode: option((Graphs.IntId.t, Graphs.Node.t(Position.t)))
 };
