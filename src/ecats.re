@@ -1,6 +1,6 @@
 
 let initialWorld = World.{
-    graph: ListGraph.empty,
+    graph: Graphs.ListGraph.empty,
     selectedNode: None
 }
 

@@ -58,22 +58,34 @@ module ResolvedEdge {
     }
 }
 
-// TODO draw a line from `source` to `target` pos using only width
-// position it at source, set width to dist, and rotate towards target
+// TODO handle self edges
 let drawEdge = ((id, edge)) => {
     open ResolvedEdge;
     open Graphs.Node;
     let (_, s) = edge.source;
     let (_, t) = edge.target;
+    let v = Position.sub(t.data, s.data);
+    let len = Position.abs(v);
+    let thickness = 4.;
     let style = Style.[
         backgroundColor(Colors.black),
+        position(`Absolute),
+        left(int_of_float(s.data.x)),
+        top(int_of_float(s.data.y)),
         transform([
-            Transform.Rotate(Revery.Math.Angle.from_degrees(30.))
+            Transform.TranslateX(-. len /. 2.),
+            Transform.TranslateY(-. thickness /. 2.),
+            Transform.Rotate(Revery.Math.Angle.from_radians(atan2(v.y, v.x))),
+            Transform.TranslateX(len /. 2.),
+            Transform.TranslateY(thickness /. 2.)
         ]),
-        width(300),
-        height(5)
+        width(int_of_float(Position.abs(v))),
+        height(int_of_float(thickness))
     ];
-    <View style=style />
+    let label = String.concat("", ["      ", Graphs.IntId.string_of_id(id)]);
+    <View style=style>
+        <Text text=label style=textStyle />
+    </View>
 }
 
 let string_of_time = tm => {
@@ -85,8 +97,9 @@ let string_of_time = tm => {
 }
 
 let getNodeAtPos = (pos, graph) => {
-    let nodes = World.ListGraph.extract(graph).nodes;
-    let nearby = ((_, n)) => Position.dist(pos, n.Graphs.Node.data) < 100.0
+    open Graphs
+    let nodes = ListGraph.extract(graph).nodes;
+    let nearby = ((_, n)) => Position.dist(pos, n.Node.data) < 100.0
     List.find_opt(nearby, nodes);
 }
 
@@ -102,6 +115,7 @@ module Main {
     let reducer = (action, state) =>
         switch(action) {
             | Click(pos) => {
+                open Graphs;
                 let oNode = getNodeAtPos(pos, state.world.graph);
                 let (graph, sel) = switch (oNode) {
                     | Some((clickedId, node)) => {
@@ -109,20 +123,20 @@ module Main {
                             | Some((oldSelId, _)) => {
                                 print_endline(String.concat(" ", [
                                     "Adding edge between",
-                                    Graphs.IntId.string_of_id(oldSelId),
-                                    Graphs.IntId.string_of_id(clickedId)
+                                    IntId.string_of_id(oldSelId),
+                                    IntId.string_of_id(clickedId)
                                 ]))
-                                let id = Graphs.IntId.get();
-                                let edge = Graphs.Edge.{source: oldSelId, target: clickedId, data: ()}
-                                World.ListGraph.addEdge(id, edge, state.world.graph);
+                                let id = IntId.get();
+                                let edge = Edge.{source: oldSelId, target: clickedId, data: ()}
+                                ListGraph.addEdge(id, edge, state.world.graph);
                             }
                             | None => state.world.graph
                         };
                         (graph, Some((clickedId, node)))
                     }
                     | None => {
-                        let id = Graphs.IntId.get();
-                        let graph = World.ListGraph.addNode(id, {data: pos}, state.world.graph);
+                        let id = IntId.get();
+                        let graph = ListGraph.addNode(id, {data: pos}, state.world.graph);
                         (graph, Some((id, {data: pos})));
                     }
                 };
@@ -162,13 +176,18 @@ module Main {
                     },
                     hooks
                 );
-            let graph = World.ListGraph.extract(state.world.graph);
+            open Graphs;
+            let graph = ListGraph.extract(state.world.graph);
             let nodes = List.map(drawNode(state.world.selectedNode), graph.nodes);
-            let s = Graphs.Node.{data: Position.{x: 100., y: 100.}};
-            let t = Graphs.Node.{data: Position.{x: 200., y: 200.}};
-            let id = Graphs.IntId.get();
-            let edge = (1, ResolvedEdge.{source: (id, s), target: (id, t)})
-            let edges = List.map(drawEdge, [edge]);
+            let resolveEdge = ((id, e)) => {
+                open ListGraph;
+                open Edge;
+                open Util;
+                let s = getNode(e.source, state.world.graph) |> fromOption;
+                let t = getNode(e.target, state.world.graph) |> fromOption;
+                (id, ResolvedEdge.{source: (e.source, s), target: (e.target, t)})
+            }
+            let edges = List.map(e => drawEdge(resolveEdge(e)), graph.edges);
             let items = List.append(nodes, edges);
             let time = string_of_time(state.time);
             let timeStyle = Style.[

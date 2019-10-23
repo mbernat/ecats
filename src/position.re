@@ -3,6 +3,15 @@ type t = {
     y: float
 };
 
+let sub = (a, b) => {
+    x: a.x -. b.x,
+    y: a.y -. b.y
+}
+
+let abs = v => {
+    sqrt(v.x**2. +. v.y**2.)
+}
+
 let dist = (a, b) => {
-    sqrt((a.x -. b.x)**2.0 +. (a.y -. b.y)**2.0)
+    abs(sub(a, b))
 }

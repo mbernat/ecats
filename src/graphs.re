@@ -1,6 +1,13 @@
+/*
+
+We should perhaps make IDs somewhat internal so that we can ensure they are unique.
+
+*/
+
 module type Id {
     type t;
     let get: unit => t;
+    let id_of_string: string => t;
     let string_of_id: t => string;
 };
 
@@ -12,7 +19,21 @@ module IntId: Id {
         next := id + 1;
         id
     };
+    let id_of_string = int_of_string;
     let string_of_id = string_of_int
+}
+
+module StringId: Id {
+    type t = string;
+    let next = ref("a");
+    let get = () => {
+        let id = next^;
+        // TODO generate proper IDs
+        next := id;
+        id
+    };
+    let id_of_string = s => s;
+    let string_of_id = id => id;
 }
 
 type list_graph('n_id, 'e_id, 'n, 'e) = {
@@ -74,3 +95,5 @@ module ListBased = (NodeId: Id, EdgeId: Id)
 
     let extract = g => g;
 }
+
+module ListGraph = ListBased(IntId, IntId);
