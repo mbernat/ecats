@@ -4,5 +4,5 @@ type posListGraph = ListGraph.t(Position.t, unit);
 
 type t = {
     graph: posListGraph,
-    selectedNode: option((IntId.t, Node.t(Position.t)))
+    selectedNode: option(Node.t(Position.t))
 };

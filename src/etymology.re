@@ -15,7 +15,13 @@ type word_info = {
     meaning: list(string)
 }
 
-let makeBear = ((w, l)) => {word: w, language: l, meaning: ["bear"]}
+let makeBear = ((w, l)) => {
+    Graphs.Node.data: {
+        word: w,
+        language: l,
+        meaning: ["bear"]
+    }
+}
 
 let preWords = [
     ("h₂ŕ̥tḱos", "Proto-Indo-European"),
@@ -50,16 +56,14 @@ let childParentList = [
 ]
 
 open Graphs
-module StringGraph = ListBased(StringId, StringId)
-type etymologyGraph = StringGraph.t(word_info, unit);
+type etymologyGraph = ListGraph.t(word_info, unit);
 
-let addWord = (g, (w, l)) => StringGraph.addNode(StringId.id_of_string(w), {data: makeBear((w, l))}, g)
-let preBearGraph: etymologyGraph = List.fold_left(addWord, StringGraph.empty, preWords);
+let addWord = (g, (w, l)) => ListGraph.addNode(makeBear((w, l)), g)
+let preBearGraph: etymologyGraph = List.fold_left(addWord, ListGraph.empty, preWords);
 
 let addEdge = (g, (c, p)) => {
-    open StringId;
-    let s = id_of_string(c);
-    let t = id_of_string(p);
-    StringGraph.addEdge(s, {source: s, target: t, data: ()}, g)
+    let s = List.find(((w, _)) => w == c, preWords) |> makeBear;
+    let t = List.find(((w, _)) => w == p, preWords) |> makeBear;
+    ListGraph.addEdge({source: s, target: t, data: ()}, g)
 }
 let bearGraph = List.fold_left(addEdge, preBearGraph, childParentList)

@@ -30,10 +30,10 @@ let textStyle =
     color(Colors.black),
   ];
 
-let drawNode = (sel, (id, node)) => {
+let drawNode = (oSel, node) => {
     open Position;
-    let bgColor = switch(sel) {
-        | Some((id', _)) => if(id == id') {Colors.red} else {Colors.azure}
+    let bgColor = switch(oSel) {
+        | Some(sel) => if(sel == node) {Colors.red} else {Colors.azure}
         | None => Colors.azure
     };
     let pos = node.Graphs.Node.data;
@@ -46,24 +46,15 @@ let drawNode = (sel, (id, node)) => {
         height(30)
     ];
     <View style=style>
-        <Text style=textStyle text=Graphs.IntId.string_of_id(id) />
+        <Text style=textStyle text="n" />
     </View>
 }
 
-module ResolvedEdge {
-    open Graphs;
-    type t('a) = {
-        source: (IntId.t, Node.t('a)),
-        target: (IntId.t, Node.t('a))
-    }
-}
-
 // TODO handle self edges
-let drawEdge = ((id, edge)) => {
-    open ResolvedEdge;
+let drawEdge = (edge) => {
     open Graphs.Node;
-    let (_, s) = edge.source;
-    let (_, t) = edge.target;
+    let s = edge.Graphs.Edge.source;
+    let t = edge.Graphs.Edge.target;
     let v = Position.sub(t.data, s.data);
     let len = Position.abs(v);
     let thickness = 4.;
@@ -82,7 +73,7 @@ let drawEdge = ((id, edge)) => {
         width(int_of_float(Position.abs(v))),
         height(int_of_float(thickness))
     ];
-    let label = String.concat("", ["      ", Graphs.IntId.string_of_id(id)]);
+    let label = "     edge";
     <View style=style>
         <Text text=label style=textStyle />
     </View>
@@ -99,7 +90,7 @@ let string_of_time = tm => {
 let getNodeAtPos = (pos, graph) => {
     open Graphs
     let nodes = ListGraph.extract(graph).nodes;
-    let nearby = ((_, n)) => Position.dist(pos, n.Node.data) < 100.0
+    let nearby = n => Position.dist(pos, n.Node.data) < 100.0
     List.find_opt(nearby, nodes);
 }
 
@@ -118,26 +109,20 @@ module Main {
                 open Graphs;
                 let oNode = getNodeAtPos(pos, state.world.graph);
                 let (graph, sel) = switch (oNode) {
-                    | Some((clickedId, node)) => {
+                    | Some(node) => {
                         let graph = switch(state.world.selectedNode) {
-                            | Some((oldSelId, _)) => {
-                                print_endline(String.concat(" ", [
-                                    "Adding edge between",
-                                    IntId.string_of_id(oldSelId),
-                                    IntId.string_of_id(clickedId)
-                                ]))
-                                let id = IntId.get();
-                                let edge = Edge.{source: oldSelId, target: clickedId, data: ()}
-                                ListGraph.addEdge(id, edge, state.world.graph);
+                            | Some(prevSel) => {
+                                let edge = Edge.{source: prevSel, target: node, data: ()}
+                                ListGraph.addEdge(edge, state.world.graph);
                             }
                             | None => state.world.graph
                         };
-                        (graph, Some((clickedId, node)))
+                        (graph, Some(node))
                     }
                     | None => {
-                        let id = IntId.get();
-                        let graph = ListGraph.addNode(id, {data: pos}, state.world.graph);
-                        (graph, Some((id, {data: pos})));
+                        let node = {Node.data: pos};
+                        let graph = ListGraph.addNode(node, state.world.graph);
+                        (graph, Some(node));
                     }
                 };
                 {
@@ -179,15 +164,7 @@ module Main {
             open Graphs;
             let graph = ListGraph.extract(state.world.graph);
             let nodes = List.map(drawNode(state.world.selectedNode), graph.nodes);
-            let resolveEdge = ((id, e)) => {
-                open ListGraph;
-                open Edge;
-                open Util;
-                let s = getNode(e.source, state.world.graph) |> fromOption;
-                let t = getNode(e.target, state.world.graph) |> fromOption;
-                (id, ResolvedEdge.{source: (e.source, s), target: (e.target, t)})
-            }
-            let edges = List.map(e => drawEdge(resolveEdge(e)), graph.edges);
+            let edges = List.map(drawEdge, graph.edges);
             let items = List.append(nodes, edges);
             let time = string_of_time(state.time);
             let timeStyle = Style.[
