@@ -3,6 +3,8 @@ type t = {
     y: float
 };
 
+let zero = {x: 0., y: 0.}
+
 let sub = (a, b) => {
     x: a.x -. b.x,
     y: a.y -. b.y

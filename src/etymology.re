@@ -15,15 +15,20 @@ type word_info = {
     meaning: list(string)
 }
 
-let makeBear = ((w, l)) => {
-    Graphs.Node.data: {
+open Graphs
+module EdgeId = MkIntId()
+module ListGraph = MkListGraph(StringId, EdgeId)
+
+let make_bear = ((w, l)) => Graphs.Node.{
+    id: StringId.id_of_string(w),
+    data: {
         word: w,
         language: l,
         meaning: ["bear"]
     }
 }
 
-let preWords = [
+let pre_words = [
     ("h₂ŕ̥tḱos", "Proto-Indo-European"),
     ("ari", "Albanian"),
     ("Hŕ̥tḱos", "Proto-Anatolian"),
@@ -39,7 +44,7 @@ let preWords = [
     ("xers", "Persian")
 ];
 
-let childParentList = [
+let child_parent_list = [
     ("h₂ŕ̥tḱos", "h₂ŕ̥tḱos"),
     ("ari", "h₂ŕ̥tḱos"),
     ("Hŕ̥tḱos", "h₂ŕ̥tḱos"),
@@ -55,15 +60,15 @@ let childParentList = [
     ("xers", "Hŕ̥šah")
 ]
 
-open Graphs
-type etymologyGraph = ListGraph.t(word_info, unit);
+type etymology_graph = ListGraph.t(word_info, unit);
 
-let addWord = (g, (w, l)) => ListGraph.addNode(makeBear((w, l)), g)
-let preBearGraph: etymologyGraph = List.fold_left(addWord, ListGraph.empty, preWords);
+let add_word = (g, (w, l)) => ListGraph.add_node(make_bear((w, l)), g)
+let pre_bear_graph: etymology_graph = List.fold_left(add_word, ListGraph.empty, pre_words);
 
-let addEdge = (g, (c, p)) => {
-    let s = List.find(((w, _)) => w == c, preWords) |> makeBear;
-    let t = List.find(((w, _)) => w == p, preWords) |> makeBear;
-    ListGraph.addEdge({source: s, target: t, data: ()}, g)
+let add_edge = (g, (c, p)) => {
+    let s = StringId.id_of_string(c);
+    let t = StringId.id_of_string(p);
+    let id = EdgeId.id_of_string("");
+    ListGraph.add_edge({id: id, source: s, target: t, data: ()}, g)
 }
-let bearGraph = List.fold_left(addEdge, preBearGraph, childParentList)
+let bear_graph = List.fold_left(add_edge, pre_bear_graph, child_parent_list)
