@@ -28,7 +28,10 @@ module type Layout {
 
 let foo = 1;
 
-module GraphLayout (G: Graphs.Graph) : Layout {
+/*
+
+*/
+module MkSimpleLayout (G: Graphs.Graph) : Layout {
     type g('a, 'b) = G.t('a, 'b);
 
     let layout = g => {

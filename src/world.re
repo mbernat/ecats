@@ -1,11 +1,7 @@
-
 open Graphs
-module NodeId = MkIntId ()
-module EdgeId = MkIntId ()
-module ListGraph = MkListGraph(NodeId, EdgeId)
-type posListGraph = ListGraph.t(Position.t, unit);
+open Space
 
 type t = {
-    graph: posListGraph,
+    graph: listGraph,
     selectedNode: option(Node.t(NodeId.t, Position.t))
 };

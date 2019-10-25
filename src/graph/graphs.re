@@ -29,12 +29,6 @@ type list_graph('a, 'b) = {
     edges: list('b)
 };
 
-/*
-
-We'd like to keep IDs internally but remove them when returning data to the user.
-
-*/
-
 module Node {
     type t('id, 'a) = {
         id: 'id,
