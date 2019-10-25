@@ -3,5 +3,5 @@ open Space
 
 type t = {
     graph: listGraph,
-    selectedNode: option(Node.t(NodeId.t, Position.t))
+    selectedNode: option(Node.t(NodeId.t, with_pos(unit)))
 };

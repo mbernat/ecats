@@ -3,11 +3,12 @@ open Revery.UI;
 
 let node = (oSel, node) => {
     open Position;
+    open Space;
     let bgColor = switch(oSel) {
         | Some(sel) => if(sel == node) {Colors.red} else {Colors.azure}
         | None => Colors.azure
     };
-    let pos = node.Graphs.Node.data;
+    let pos = node.Graphs.Node.data.pos;
     let style = Style.[
         backgroundColor(bgColor),
         position(`Absolute),
@@ -17,17 +18,18 @@ let node = (oSel, node) => {
         height(30)
     ];
     <View style=style>
-        <Text style=Styles.text text=Space.NodeId.string_of_id(node.Graphs.Node.id) />
+        <Text style=Styles.text text=NodeId.string_of_id(node.Graphs.Node.id) />
     </View>
 }
 
 // TODO handle vertices that are too close together
 let edge = (edge) => {
     open Graphs.Edge;
+    open Space;
     let s = edge.source;
     let t = edge.target;
-    let s_pos = s.Graphs.Node.data;
-    let t_pos = t.Graphs.Node.data;
+    let s_pos = s.Graphs.Node.data.pos;
+    let t_pos = t.Graphs.Node.data.pos;
     let v = Position.sub(t_pos, s_pos);
     let len = Position.abs(v);
     let thickness = 4.;
@@ -48,7 +50,7 @@ let edge = (edge) => {
     ];
     let label =
         if (s.id != t.id)
-            String.concat("", ["      ", Space.EdgeId.string_of_id(edge.Graphs.Edge.id)])
+            String.concat("", ["      ", EdgeId.string_of_id(edge.Graphs.Edge.id)])
         else
             "o";
     <View style=style>

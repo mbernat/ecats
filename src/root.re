@@ -14,6 +14,8 @@ module Main {
     
     let reducer = (action, state) =>
         switch(action) {
+            // Clicking space creates a node and selects it
+            // Clicking on a node creates an edge from the previously selected node
             | Click(pos) => {
                 open Space;
                 let oNode = Space.getNodeAtPos(pos, state.world.graph);
@@ -31,7 +33,7 @@ module Main {
                     }
                     | None => {
                         let id = NodeId.id_of_string("");
-                        let node = Graphs.Node.{id:id, data: pos};
+                        let node = Graphs.Node.{id:id, data: Space.{pos: pos, data: ()}};
                         let graph = ListGraph.add_node(node, state.world.graph);
                         (graph, Some(node));
                     }
@@ -73,6 +75,7 @@ module Main {
                     hooks
                 );
             
+            // Draw the graph
             open Space;
             let graph = ListGraph.extract(state.world.graph);
             let nodes = List.map(Draw.node(state.world.selectedNode), graph.nodes);
@@ -81,7 +84,7 @@ module Main {
 
             let time = Timer.string_of_time(state.time);
 
-
+            // Computes the coordinates of the click relative to the parent element
             let handleClick = evt =>
                 switch(refOption) {
                     | Some(ref) => {

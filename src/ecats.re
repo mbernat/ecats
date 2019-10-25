@@ -1,3 +1,7 @@
+module Layout {
+    open Etymology;
+    module SimpleLayout = Layout.MkSimpleLayout(Graphs.StringId, EdgeId, ListGraph);
+}
 
 let initialWorld = World.{
     graph: Space.ListGraph.empty,
