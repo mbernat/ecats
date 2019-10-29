@@ -11,3 +11,6 @@ let fromOption = o =>
         | Some(x) => x
         | None => raise(OptionIsNone)
     }
+
+let fst = ((a, _)) => a;
+let snd = ((_, b)) => b;

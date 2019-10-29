@@ -3,7 +3,8 @@
 (executable
     (name ecats)
     (public_name ecats)
-    (libraries Revery))
+    (libraries Revery)
+    (flags -g))
 
 (install
     (section bin)

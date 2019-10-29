@@ -1,28 +1,46 @@
 module type Id {
     type t;
 
-    let string_of_id: t => string;
-    // TODO figure out how to handle both generated and user-supplied IDs with a single interface
-    // then remove this
-    let id_of_string: string => t;
+    let allocate: unit => t;
+    let string_of: t => string;
 }
 
-module MkIntId = (): Id => {
+module type ListIds = {
+    let ids: list(string)
+}
+
+module MkIntId(): Id = {
     type t = int;
-    let next = ref(0);
-    let id_of_string = _ => {
-        let id = next^;
-        next := id + 1;
-        id
-    };
-    let string_of_id = string_of_int
+    let id = ref(0);
+    let allocate = () => { incr(id); id^ }
+    let string_of = string_of_int
 }
 
-module StringId: Id = {
-    type t = string;
-    let id_of_string = id => id;
-    let string_of_id = id => id;
+module MkIdFromList(L:ListIds, ()): Id = {
+    module M {
+        module IntId = MkIntId ();
+        let prefix = "gen ";
+
+        type t = string;
+        let ids = ref(L.ids);
+        let allocate = () => {
+            if (List.length(ids^) > 0) {
+                let head = List.hd(ids^);
+                ids := List.tl(ids^);
+                head
+            } else {
+                // TODO: To be fully correct this should also step over the ids in L.ids
+                String.concat("", [prefix, IntId.string_of(IntId.allocate())])
+            }
+        }
+        let string_of = s => s
+    };
+
+    type t = M.t;
+    let allocate = M.allocate;
+    let string_of = M.string_of;
 }
+
 
 type list_graph('a, 'b) = {
     nodes: list('a),
@@ -49,7 +67,7 @@ module type Graph {
     type node_id;
     type edge_id;
     type n('a);
-    type e('a);
+    type e('b);
     type re('a, 'b);
     type t('a, 'b);
 
@@ -63,18 +81,19 @@ module type Graph {
     let find_edge: edge_id => t('a, 'b) => option(e('b));
     let resolve_edge: e('b) => t('a, 'b) => re('a, 'b);
 
-    let extract: t('a, 'b) => list_graph(n('a), e('b))
+    let extract: t('a, 'b) => list_graph(n('a), e('b));
 }
 
-module MkListGraph = (NodeId: Id, EdgeId: Id)
-: (Graph
-    with type node_id := NodeId.t
-    and type edge_id := EdgeId.t
-    and type n('a) := Node.t(NodeId.t, 'a)
-    and type e('a) := Edge.t(EdgeId.t, NodeId.t, 'a)
-    and type re('a, 'b) := Edge.t(EdgeId.t, Node.t(NodeId.t, 'a), 'b)
-)
-=> {
+module WithIds(NodeId: Id, EdgeId: Id) = {
+    module type Graph = Graph
+        with type node_id := NodeId.t
+        and type edge_id := EdgeId.t
+        and type n('a) := Node.t(NodeId.t, 'a)
+        and type e('a) := Edge.t(EdgeId.t, NodeId.t, 'a)
+        and type re('a, 'b) := Edge.t(EdgeId.t, Node.t(NodeId.t, 'a), 'b);
+}
+
+module MkListGraph(NodeId: Id, EdgeId: Id): WithIds(NodeId, EdgeId).Graph = {
     type n('a) = Node.t(NodeId.t, 'a);
     type e('a) = Edge.t(EdgeId.t, NodeId.t, 'a);
     type t('a, 'b) = list_graph(n('a), e('b));
@@ -122,3 +141,4 @@ module MkListGraph = (NodeId: Id, EdgeId: Id)
 
     let extract = g => g;
 }
+

@@ -1,6 +1,8 @@
 //open Revery;
 open Revery.UI;
 open Revery.UI.Components;
+open Etymology
+module Draw = Draw.MkDraw(NodeId, EdgeId)
 
 module Main {
     type action =
@@ -9,7 +11,7 @@ module Main {
 
     type state = {
         time: Unix.tm,
-        world: World.t
+        world: World.t(unit, unit)
     };
     
     let reducer = (action, state) =>
@@ -18,12 +20,12 @@ module Main {
             // Clicking on a node creates an edge from the previously selected node
             | Click(pos) => {
                 open Space;
-                let oNode = Space.getNodeAtPos(pos, state.world.graph);
+                let oNode = World.Space.getNodeAtPos(pos, state.world.graph);
                 let (graph, sel) = switch (oNode) {
                     | Some(node) => {
                         let graph = switch(state.world.selectedNode) {
                             | Some(prevSel) => {
-                                let id = EdgeId.id_of_string("");
+                                let id = EdgeId.allocate();
                                 let edge = Graphs.Edge.{id: id, source: prevSel.id, target: node.id, data: ()}
                                 ListGraph.add_edge(edge, state.world.graph);
                             }
@@ -32,7 +34,7 @@ module Main {
                         (graph, Some(node))
                     }
                     | None => {
-                        let id = NodeId.id_of_string("");
+                        let id = NodeId.allocate();
                         let node = Graphs.Node.{id:id, data: Space.{pos: pos, data: ()}};
                         let graph = ListGraph.add_node(node, state.world.graph);
                         (graph, Some(node));
