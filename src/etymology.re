@@ -74,8 +74,8 @@ let add_word = (g, (w, l)) => ListGraph.add_node(make_bear((w, l)), g)
 let pre_bear_graph = List.fold_left(add_word, ListGraph.empty, pre_words);
 
 let add_edge = (g, (c, p)) => {
-    let s = word_to_id(c);
-    let t = word_to_id(p);
+    let s = word_to_id(p);
+    let t = word_to_id(c);
     let id = EdgeId.allocate();
     ListGraph.add_edge({id: id, source: s, target: t, data: ()}, g)
 }
