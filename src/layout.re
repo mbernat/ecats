@@ -20,7 +20,7 @@ module WithGraph(NodeId: Id, EdgeId: Id, G: WithIds(NodeId, EdgeId).Graph) {
     module type Layout {
         type params;
 
-        let layout: params => G.t('a, 'b) => G.t(Space.with_pos('a), 'b)
+        let layout: params => G.t('a, 'b) => G.t(Vec.with_pos('a), 'b)
     }
 
 // TODO accept a bounding box in which to position the graph as an argument
@@ -31,7 +31,7 @@ module WithGraph(NodeId: Id, EdgeId: Id, G: WithIds(NodeId, EdgeId).Graph) {
             let f = n => {
                 let x = top_left +. Random.float(extent);
                 let y = top_left +. Random.float(extent);
-                Space.{data: n, pos: Position.{x: x, y: y}}
+                Vec.{data: n, pos: Vec.{x: x, y: y}}
             }
             G.map_nodes(f, g)
         }
@@ -52,7 +52,8 @@ module WithGraph(NodeId: Id, EdgeId: Id, G: WithIds(NodeId, EdgeId).Graph) {
     Currently this only orders the vertical position, the horizontal position is still random
     
     A better algorithm: layout the subtree of every child; then reposition them relative to the parent
-    This sounds very much like job for Revery, there's no point duplicating all the tree management.
+    THIS IS ON HOLD; although it'd useful, it's a lot of work and I'm more interested in dynamic layouts,
+    which should provide similar results and be generally more useful and nicer.
     */
     module FromRoot: FR.Layout {
         module R = Random
@@ -65,9 +66,9 @@ module WithGraph(NodeId: Id, EdgeId: Id, G: WithIds(NodeId, EdgeId).Graph) {
             let f = n => {
                 open Node
                 let dist_node = G.find_node(n.id, distances) |> Util.fromOption;
-                open Space
+                open Vec
                 let pos = switch(dist_node.data) {
-                    | Some(d) => Position.{y: top +. float_of_int(d) *. spacing, x: n.data.pos.x}
+                    | Some(d) => Vec.{y: top +. float_of_int(d) *. spacing, x: n.data.pos.x}
                     | None => n.data.pos;
                 };
                 {data: n.data.data, pos: pos}

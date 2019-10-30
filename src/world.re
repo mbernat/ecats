@@ -1,13 +1,32 @@
 open Graphs
-open Etymology;
+open Etymology
+open Physics
 
 module L = Layout.WithGraph(NodeId, EdgeId, ListGraph);
-let root = word_to_id("h₂ŕ̥tḱos");
-let graph = L.FromRoot.layout(L.FR.{root: root}, bear_graph)
 
 type t('a, 'b) = {
-    graph: ListGraph.t(Space.with_pos('a), 'b),
-    selectedNode: option(Node.t(NodeId.t, Space.with_pos('a)))
+    engine: Engine.t(NodeId.t),
+    graph: ListGraph.t(Vec.with_pos('a), 'b),
+    selectedNode: option(Node.t(NodeId.t, Vec.with_pos('a)))
 };
 
 module Space = Space.MkSpace(NodeId, EdgeId, ListGraph);
+
+let mk_point = (id, pos) =>
+    Point.{
+        id: id,
+        pos: pos,
+        vel: Vec.zero,
+        forces: [],
+        mass: Some(1.)
+    };
+
+let mk_random_point = n => mk_point(n.Node.id, Vec.random(1000.))
+
+let points = List.map(mk_random_point, ListGraph.extract(bear_graph).nodes);
+
+let initial = {
+    engine: Engine.init(points),
+    graph: L.Random.layout((), bear_graph),
+    selectedNode: None
+}

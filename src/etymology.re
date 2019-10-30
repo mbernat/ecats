@@ -52,7 +52,7 @@ let make_bear = ((w, l)) => Graphs.Node.{
     }*/
 }
 
-
+let root = word_to_id("h₂ŕ̥tḱos");
 
 let child_parent_list = [
     ("h₂ŕ̥tḱos", "h₂ŕ̥tḱos"),

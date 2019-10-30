@@ -4,7 +4,7 @@ open Graphs;
 
 module MkDraw(NodeId: Id, EdgeId: Id) = {
     let node = (oSel, node) => {
-        open Position;
+        open Vec;
         open Space;
         let bgColor = switch(oSel) {
             | Some(sel) => if(sel == node) {Colors.red} else {Colors.azure}
@@ -16,7 +16,6 @@ module MkDraw(NodeId: Id, EdgeId: Id) = {
             position(`Absolute),
             left(int_of_float(pos.x)),
             top(int_of_float(pos.y)),
-            width(150),
             height(30)
         ];
         <View style=style>
@@ -25,7 +24,7 @@ module MkDraw(NodeId: Id, EdgeId: Id) = {
     }
 
     let self_loop = (pos, bgColor) => {
-        open Position;
+        open Vec;
         let style = Style.[
             backgroundColor(bgColor),
             position(`Absolute),
@@ -39,8 +38,8 @@ module MkDraw(NodeId: Id, EdgeId: Id) = {
 
     let standard_edge = (edge, pos, v) => {
         open Graphs.Edge;
-        open Position
-        let len = Position.abs(v);
+        open Vec
+        let len = abs(v);
         let thickness = 4.;
         let style = Style.[
             backgroundColor(Colors.black),
@@ -66,18 +65,18 @@ module MkDraw(NodeId: Id, EdgeId: Id) = {
 
     let edge = (edge) => {
         open Graphs.Edge;
-        open Space;
+        open Vec;
         let s = edge.source;
         let t = edge.target;
         let s_pos = s.Graphs.Node.data.pos;
         let t_pos = t.Graphs.Node.data.pos;
-        let v = Position.sub(t_pos, s_pos);
+        let v = sub(t_pos, s_pos);
 
         // TODO draw multiple loops nicely
         if (s.id == t.id) {
             self_loop(s_pos, Colors.yellow)
         // TODO draw short edges nicely
-        } else if (Position.abs(v) < 50.) {
+        } else if (abs(v) < 50.) {
             self_loop(s_pos, Colors.green)
         } else {
             standard_edge(edge, s_pos, v)
