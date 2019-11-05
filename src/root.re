@@ -48,10 +48,11 @@ module Main {
     let step_physics = (state) => {
         open World
         open Physics
-        let k = 2e-6;
-        let l = 100.;
-        let c = 1.;
-        let d = 1e-3;
+        let k = 5e-5;
+        let l = 1e2;
+        let c = 2e1;
+        let d = 5e-3;
+        let g = 3e-3;
         let add_springs_for_edges = engine => {
             let edges = ListGraph.extract(state.graph).edges;
             module PairSet = Set.Make ({type t = (NodeId.t, NodeId.t); let compare = compare});
@@ -69,7 +70,7 @@ module Main {
         }
         let drag_force = p => Vec.scale(p.Point.vel, -. d);
         let engine = state.engine
-            |> Force.add_gravity(Vec.{x: 0., y: 1e-4})
+            |> Force.add_gravity(Vec.{x: 0., y: g})
             |> Force.add_uniform(drag_force)
             |> Force.add_all_pairwise(coulomb_force(c))
             |> add_springs_for_edges
