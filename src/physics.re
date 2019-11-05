@@ -82,6 +82,13 @@ module Engine: Engine {
 // The force is oriented along the pair's axis; positive sign means an attractive force
 type radial_force = float => float;
 
+let coulomb_force = (c, r) => c /. r**2.;
+
+// k is the spring constant, l the rest length
+let spring_force = (k, l, r) => {
+    -. k *. (r -. l)
+}
+
 let radial_force = (f, a, b) => {
     open Point
     open Vec
@@ -98,16 +105,20 @@ let radial_force = (f, a, b) => {
 
 module WithEngine(E: Engine) {
     module type Forces {
+        let add_uniform: (Point.t('a) => Vec.t) => E.t('a) => E.t('a)
         let add_gravity: Vec.t => E.t('a) => E.t('a);
-        let add_pairwise_interactions: radial_force => E.t('a) => E.t('a);
+        let add_all_pairwise: radial_force => E.t('a) => E.t('a);
+        let add_pairwise: 'a => 'a => radial_force => E.t('a) => E.t('a);
     }
 }
 
 module Forces(E: Engine): WithEngine(E).Forces {
-    let add_gravity = (g, e) => {
+    let add_uniform = (f, e) => {
         let l = E.to_list(e);
-        List.fold_left((e, p) => E.add_force(p.Point.id, g, e), e, l)
+        List.fold_left((e, p) => E.add_force(p.Point.id, f(p), e), e, l)
     }
+
+    let add_gravity = (g, e) => add_uniform(_p => g, e)
 
     let all_pairwise_forces_for = (p, f, e) => {
         open Point
@@ -115,9 +126,24 @@ module Forces(E: Engine): WithEngine(E).Forces {
         List.fold_left(Vec.add, Vec.zero, forces)
     }
 
-    let add_pairwise_interactions = (f, e) => {
+    // TODO take charge signs into account
+    let add_all_pairwise = (f, e) => {
         let l = E.to_list(e);
         List.fold_left((e, p) => E.add_force(p.Point.id, all_pairwise_forces_for(p, f, e), e), e, l)
+    }
+
+    // This is unsafe
+    let get_point = (id, e) => {
+        List.find(p => p.Point.id == id, E.to_list(e));
+    }
+
+    // TODO handle wrong IDs
+    let add_pairwise = (p_id, q_id, f, e) => {
+        let p = get_point(p_id, e);
+        let q = get_point(q_id, e);
+        e
+        |> E.add_force(p_id, radial_force(f, p.pos, q.pos))
+        |> E.add_force(q_id, radial_force(f, q.pos, p.pos))
     }
 }
 

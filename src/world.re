@@ -23,7 +23,15 @@ let mk_point = (id, pos) =>
 
 let mk_random_point = n => mk_point(n.Node.id, Vec.random(1000.))
 
-let points = List.map(mk_random_point, ListGraph.extract(bear_graph).nodes);
+let mk_bear_point = n => {
+    let point = mk_random_point(n);
+    if (n.id == root)
+        {...point, mass: None}
+    else
+        point
+};
+
+let points = List.map(mk_bear_point, ListGraph.extract(bear_graph).nodes);
 
 let initial = {
     engine: Engine.init(points),

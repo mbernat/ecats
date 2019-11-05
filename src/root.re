@@ -13,31 +13,31 @@ module Main {
 
     type state = World.t(unit, unit)
 
-    let handle_select = (node, world) => {
+    let add_edge = (node, state) => {
         open World
-        let graph = switch(world.selectedNode) {
+        let graph = switch(state.selectedNode) {
             | Some(prevSel) => {
                 let id = EdgeId.allocate();
                 let edge = Graphs.Edge.{id: id, source: prevSel.id, target: node.Graphs.Node.id, data: ()}
-                ListGraph.add_edge(edge, world.graph);
+                ListGraph.add_edge(edge, state.graph);
             }
-            | None => world.graph
+            | None => state.graph
         };
         {
-            ...world,
+            ...state,
             graph: graph,
             selectedNode: Some(node)
         }
     }
 
-    let handle_ground_click = (pos, world) => {
+    let add_node = (pos, state) => {
         open World
         open Vec
         let id = NodeId.allocate();
         let node = Graphs.Node.{id:id, data: {pos: pos, data: ()}};
-        let graph = ListGraph.add_node(node, world.graph);
+        let graph = ListGraph.add_node(node, state.graph);
         let point = World.mk_point(id, pos);
-        let engine = Physics.Engine.add_point(point, world.engine);
+        let engine = Physics.Engine.add_point(point, state.engine);
         {
             engine: engine,
             graph: graph,
@@ -45,12 +45,34 @@ module Main {
         }
     }
 
-    // TODO add coulomb and spring forces
-    let handle_tick = (state) => {
+    let step_physics = (state) => {
         open World
         open Physics
+        let k = 2e-6;
+        let l = 100.;
+        let c = 1.;
+        let d = 1e-3;
+        let add_springs_for_edges = engine => {
+            let edges = ListGraph.extract(state.graph).edges;
+            module PairSet = Set.Make ({type t = (NodeId.t, NodeId.t); let compare = compare});
+            let add_pair = (s, e) => {
+                open Graphs.Edge;
+                let pair = if (e.source < e.target)
+                    (e.source, e.target)
+                else
+                    (e.target, e.source)
+                PairSet.add(pair, s)
+            }
+            let pairs = List.fold_left(add_pair, PairSet.empty, edges);
+            let add_spring = ((a, b), e) => Force.add_pairwise(a, b, spring_force(k, l), e);
+            PairSet.fold(add_spring, pairs, engine);
+        }
+        let drag_force = p => Vec.scale(p.Point.vel, -. d);
         let engine = state.engine
             |> Force.add_gravity(Vec.{x: 0., y: 1e-4})
+            |> Force.add_uniform(drag_force)
+            |> Force.add_all_pairwise(coulomb_force(c))
+            |> add_springs_for_edges
             |> Engine.step(tick);
         let points = Engine.to_list(engine);
         let update_node = n => {
@@ -70,6 +92,7 @@ module Main {
         }
     }
     
+    // TODO handle node selection via Revery
     let reducer = (action, state) =>
         switch(action) {
             // Clicking space creates a node and selects it
@@ -79,11 +102,11 @@ module Main {
                 open World;
                 let oNode = World.Space.getNodeAtPos(pos, state.graph);
                 switch (oNode) {
-                    | Some(node) => handle_select(node, state)
-                    | None => handle_ground_click(pos, state)
+                    | Some(node) => add_edge(node, state)
+                    | None => add_node(pos, state)
                 }
             }
-            | Tick => handle_tick(state)
+            | Tick => step_physics(state)
         };
         
     let component = React.component("Main");
