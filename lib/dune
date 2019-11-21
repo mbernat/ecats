@@ -1,4 +1,4 @@
 (library
     (name ecats)
     (public_name ecats)
-    (libraries common etymology graph physics))
+    (libraries common etymology graph lambda physics))
