@@ -1,0 +1,4 @@
+(library
+    (name physics)
+    (public_name ecats.physics)
+    (libraries common))

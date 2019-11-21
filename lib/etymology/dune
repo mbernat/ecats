@@ -1,0 +1,4 @@
+(library
+    (name etymology)
+    (public_name ecats.etymology)
+    (libraries common graph))

@@ -1,0 +1,3 @@
+(library
+    (name ecats_lambda)
+    (public_name ecats.lambda))

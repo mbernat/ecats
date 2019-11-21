@@ -15,6 +15,8 @@ type word_info = {
     meaning: list(string)
 }
 
+open Common
+open Graph
 open Graphs
 
 let pre_words = [

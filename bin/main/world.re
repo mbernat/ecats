@@ -1,3 +1,5 @@
+open Common
+open Graph
 open Graphs
 open Etymology
 open Physics

@@ -158,8 +158,8 @@ module MkListGraph(NodeId: Id, EdgeId: Id): WithIds(NodeId, EdgeId).Graph = {
         open Edge;
         {
             id: e.id,
-            source: find_node(e.source, g) |> Util.fromOption,
-            target: find_node(e.target, g) |> Util.fromOption,
+            source: find_node(e.source, g) |> Common.Util.fromOption,
+            target: find_node(e.target, g) |> Common.Util.fromOption,
             data: e.data
         }
     }
@@ -205,7 +205,7 @@ I was sort of assuming the graph is undirected. What happens in directed graphs?
                 let g' = update_node({...root, data: Some(depth)}, g);
                 let adjacent = get_adjacent_edges(root.id, g');
                 let f = (g, e) => {
-                    let n = find_node(e.Edge.target, g) |> Util.fromOption;
+                    let n = find_node(e.Edge.target, g) |> Common.Util.fromOption;
                     dist_from'(n, depth+1, g);
                 };
                 List.fold_left(f, g', adjacent.outgoing);

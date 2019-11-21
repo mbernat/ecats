@@ -1,7 +1,9 @@
 //open Revery;
 open Revery.UI;
 open Revery.UI.Components;
+open Common
 open Etymology
+open Graph
 module Draw = Draw.MkDraw(NodeId, EdgeId)
 
 let tick = 1000. /. 60.;

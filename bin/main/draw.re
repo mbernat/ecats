@@ -1,6 +1,8 @@
-open Revery;
-open Revery.UI;
-open Graphs;
+open Revery
+open Revery.UI
+open Common
+open Graph
+open Graphs
 
 module MkDraw(NodeId: Id, EdgeId: Id) = {
     let node = (oSel, node) => {

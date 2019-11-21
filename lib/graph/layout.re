@@ -14,8 +14,9 @@ In fact, dynamic layouting should be considered as simply physics and doesn't pr
 We can treat it as one-shot by preparing the initial positions (perhaps random), letting the graph evolve for some time, and returning the final state.
 
 */
-
+open Common
 open Graphs
+
 module WithGraph(NodeId: Id, EdgeId: Id, G: WithIds(NodeId, EdgeId).Graph) {
     module type Layout {
         type params;

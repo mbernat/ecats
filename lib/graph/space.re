@@ -1,4 +1,6 @@
+open Common
 open Graphs
+
 module MkSpace(NodeId: Id, EdgeId: Id, G: WithIds(NodeId, EdgeId).Graph) = {
     type listGraph = G.t(Vec.with_pos(unit), unit);
 

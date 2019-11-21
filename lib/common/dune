@@ -1,0 +1,3 @@
+(library
+    (name common)
+    (public_name ecats.common))

@@ -1,0 +1,8 @@
+(executable
+    (name main)
+    (public_name main)
+    (libraries Revery ecats))
+
+(install
+    (section bin)
+    (files Roboto-Regular.ttf))

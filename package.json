@@ -8,7 +8,8 @@
     "NOTE": "Optional release Section. Customizes result of `esy release`",
     "release": {
       "bin": [
-        "Ecats"
+        "main",
+        "test"
       ]
     },
     "buildEnv": {
@@ -16,7 +17,8 @@
     }
   },
   "scripts": {
-    "test": "esy x ecats",
+    "run": "esy x main",
+    "test": "esy x test",
     "doc": "esy dune build @doc"
   },
   "dependencies": {

@@ -14,6 +14,8 @@ This module implements only raw physics, graph physics will be done by another m
 Geometry and collisions are not handle at the moment.
 */
 
+open Common
+
 module Point {
     type t('a) = {
         id: 'a,
