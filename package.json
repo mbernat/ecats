@@ -22,20 +22,23 @@
     "doc": "esy dune build @doc"
   },
   "dependencies": {
-    "@opam/dune": "*",
-    "@esy-ocaml/reason": ">= 3.4.0 < 3.6.0",
-    "refmterr": "*",
-    "revery": "*"
+    "@opam/ocamlgraph": "1.8.8",
+    "revery": "0.28.0"
   },
   "devDependencies": {
-    "@opam/merlin": "*",
     "ocaml": ">=4.6.0 <4.8.0",
-    "@opam/odoc": "*"
+    "@opam/dune": "1.11.4",
+    "@opam/merlin": "3.3.2",
+    "@opam/merlin-lsp": "3.1.0",
+    "@opam/odoc": "1.4.2",
+    "@esy-ocaml/reason": ">= 3.4.0 < 3.6.0",
+    "refmterr": "3.2.2"
   },
   "resolutions": {
-    "rebez": "github:jchavarri/rebez#46cbc183",
     "@opam/cmdliner": "1.0.2",
-    "rench": "github:revery-ui/rench#4554280",
-    "pesy": "0.4.1"
+    "@opam/merlin-lsp": "github:ocaml/merlin:merlin-lsp.opam#ddf678d",
+    "pesy": "0.4.1",
+    "rebez": "github:jchavarri/rebez#46cbc183",
+    "rench": "github:revery-ui/rench#4554280"
   }
 }
