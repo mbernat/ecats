@@ -15,10 +15,6 @@ type word_info = {
     meaning: list(string)
 }
 
-open Common
-open Graph
-open Graphs
-
 let pre_words = [
     ("h₂ŕ̥tḱos", "Proto-Indo-European"),
     ("ari", "Albanian"),
@@ -35,24 +31,13 @@ let pre_words = [
     ("xers", "Persian")
 ];
 
-module Ids = {
-    let ids = List.map((((a, _)) => a), pre_words)
-}
-module NodeId = MkIdFromList(Ids, ());
-module EdgeId = MkIntId ()
-module ListGraph = MkListGraph(NodeId, EdgeId)
+module NodeId = Common.Id.MkInt ()
+module EdgeId = Common.Id.MkInt ()
+module G = Graph.Persistent.Digraph.ConcreteBidirectionalLabeled(NodeId, EdgeId)
 
-let word_id_list = List.map(w => (w, NodeId.allocate()), Ids.ids);
-let word_to_id = w => List.find(((w', _)) => w == w', word_id_list) |> Util.snd;
-
-let make_bear = ((w, l)) => Graphs.Node.{
-    id: word_to_id(w),
-    data: ()/*{
-        word: w,
-        language: l,
-        meaning: ["bear"]
-    }*/
-}
+let word_id_list = List.map(((w, _)) => (w, NodeId.allocate()), pre_words);
+let word_to_id = w => List.find(((w', _)) => w == w', word_id_list) |> Common.Util.snd;
+let id_to_word = id => List.find(((_, id')) => id == id', word_id_list) |> Common.Util.fst;
 
 let root = word_to_id("h₂ŕ̥tḱos");
 
@@ -72,13 +57,14 @@ let child_parent_list = [
     ("xers", "Hŕ̥šah")
 ];
 
-let add_word = (g, (w, l)) => ListGraph.add_node(make_bear((w, l)), g)
-let pre_bear_graph = List.fold_left(add_word, ListGraph.empty, pre_words);
+let add_word = (g, (w, l)) => G.add_vertex(g, word_to_id(w))
+let pre_bear_graph = List.fold_left(add_word, G.empty, pre_words);
 
 let add_edge = (g, (c, p)) => {
     let s = word_to_id(p);
     let t = word_to_id(c);
     let id = EdgeId.allocate();
-    ListGraph.add_edge({id: id, source: s, target: t, data: ()}, g)
+    let edge = G.E.create(s, id, t);
+    G.add_edge_e(g, edge);
 }
 let bear_graph = List.fold_left(add_edge, pre_bear_graph, child_parent_list)

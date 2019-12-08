@@ -32,8 +32,3 @@ let random = (bound) => {
     x: Random.float(bound),
     y: Random.float(bound)
 }
-
-type with_pos('a) = {
-    pos: t,
-    data: 'a
-}

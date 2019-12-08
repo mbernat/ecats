@@ -1,4 +1,0 @@
-(library
-    (name graph)
-    (public_name ecats.graph)
-    (libraries common))

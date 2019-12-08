@@ -4,7 +4,6 @@ open Revery.UI.Components;
 open Common
 open Etymology
 open Graph
-module Draw = Draw.MkDraw(NodeId, EdgeId)
 
 let tick = 1000. /. 60.;
 
@@ -13,22 +12,21 @@ module Main {
         | Click(Vec.t)
         | Tick;
 
-    type state = World.t(unit, unit)
+    type state = World.t
 
-    let add_edge = (node, state) => {
+    let add_edge = ((node_id, node), state) => {
         open World
         let graph = switch(state.selectedNode) {
             | Some(prevSel) => {
                 let id = EdgeId.allocate();
-                let edge = Graphs.Edge.{id: id, source: prevSel.id, target: node.Graphs.Node.id, data: ()}
-                ListGraph.add_edge(edge, state.graph);
+                G.add_edge_e(state.graph, (fst(prevSel), id, node_id))
             }
             | None => state.graph
         };
         {
             ...state,
             graph: graph,
-            selectedNode: Some(node)
+            selectedNode: Some((node_id, node))
         }
     }
 
@@ -36,14 +34,17 @@ module Main {
         open World
         open Vec
         let id = NodeId.allocate();
-        let node = Graphs.Node.{id:id, data: {pos: pos, data: ()}};
-        let graph = ListGraph.add_node(node, state.graph);
+        let node = Node.{word: NodeId.string_of(id), pos: pos}
+        let nodes = NodeMap.add(id, node, state.nodes)
+        let graph = G.add_vertex(state.graph, id);
         let point = World.mk_point(id, pos);
         let engine = Physics.Engine.add_point(point, state.engine);
         {
-            engine: engine,
-            graph: graph,
-            selectedNode: Some(node)
+            nodes,
+            edges: state.edges,
+            engine,
+            graph,
+            selectedNode: Some((id, node))
         }
     }
 
@@ -56,14 +57,13 @@ module Main {
         let d = 5e-3;
         let g = 3e-3;
         let add_springs_for_edges = engine => {
-            let edges = ListGraph.extract(state.graph).edges;
+            let edges = get_edges(state.graph);
             module PairSet = Set.Make ({type t = (NodeId.t, NodeId.t); let compare = compare});
-            let add_pair = (s, e) => {
-                open Graphs.Edge;
-                let pair = if (e.source < e.target)
-                    (e.source, e.target)
+            let add_pair = (s, (source, id, dest)) => {
+                let pair = if (source < dest)
+                    (source, dest)
                 else
-                    (e.target, e.source)
+                    (dest, source)
                 PairSet.add(pair, s)
             }
             let pairs = List.fold_left(add_pair, PairSet.empty, edges);
@@ -78,20 +78,15 @@ module Main {
             |> add_springs_for_edges
             |> Engine.step(tick);
         let points = Engine.to_list(engine);
-        let update_node = n => {
-            open Graphs.Node
-            let data = n.data;
-            let point = List.find(p => p.Point.id == n.id, points);
-            Vec.{
-                pos: point.Point.pos,
-                data: data.data
-            }
+        let update_node = (id, n) => {
+            let point = List.find(p => p.Point.id == id, points);
+            Node.{...n, pos: point.Point.pos}
         };
-        let graph = ListGraph.mapi_nodes(update_node, state.graph);
+        let nodes = NodeMap.mapi(update_node, state.nodes);
         {
             ...state,
             engine: engine,
-            graph: graph
+            nodes: nodes
         }
     }
     
@@ -101,9 +96,12 @@ module Main {
             // Clicking space creates a node and selects it
             // Clicking on a node creates an edge from the previously selected node
             | Click(pos) => {
-                open Space;
                 open World;
-                let oNode = World.Space.getNodeAtPos(pos, state.graph);
+                let f = (_, n) => Vec.dist(n.Node.pos, pos) < 100.
+                let nearby_bindings = state.nodes
+                    |> NodeMap.filter(f)
+                    |> NodeMap.bindings;
+                let oNode = List.nth_opt(nearby_bindings, 0);
                 switch (oNode) {
                     | Some(node) => add_edge(node, state)
                     | None => add_node(pos, state)
@@ -133,10 +131,9 @@ module Main {
                 );
             
             // Draw the graph
-            open Space;
-            let graph = ListGraph.extract(state.graph);
-            let nodes = List.map(Draw.node(state.selectedNode), graph.nodes);
-            let edges = List.map(e => Draw.edge(ListGraph.resolve_edge(e, state.graph)), graph.edges);
+            open World
+            let nodes = List.map(Draw.node(state.selectedNode), NodeMap.bindings(state.nodes));
+            let edges = List.map(e => Draw.edge(ResolvedEdge.resolve(state, e)), get_edges(state.graph));
             let items = List.append(nodes, edges);
 
             // Computes the coordinates of the click relative to the parent element

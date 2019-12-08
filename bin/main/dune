@@ -1,7 +1,7 @@
 (executable
     (name main)
     (public_name main)
-    (libraries Revery ecats))
+    (libraries Revery ocamlgraph ecats))
 
 (install
     (section bin)
