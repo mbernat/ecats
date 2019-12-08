@@ -1,3 +1,4 @@
 (library
     (name lambda)
-    (public_name ecats.lambda))
+    (public_name ecats.lambda)
+    (libraries ocamlgraph common))

@@ -1,6 +1,6 @@
 open Common
+open Graphs
 open Graph
-open Etymology
 open Physics
 
 module Node = {
@@ -42,7 +42,11 @@ let random_pos = () => {
 
 let mk_random_point = n => mk_point(n, random_pos())
 
-let mk_bear_point = n => {
+// TODO abstract away the dependency on concrete graphs (etymology/lambda)
+//let (root, my_graph) = (Etymology.root, Etymology.bear_graph)
+let (root, my_graph) = Lambda.Graph.of_term(Lambda.Term.ex3)
+
+let mk_root_point = n => {
     let point = mk_random_point(n);
     if (n == root)
         {...point, mass: None}
@@ -79,16 +83,20 @@ module ResolvedEdge = {
     }
 }
 
-let to_node = n => Point.(n.id, Node.{word: id_to_word(n.id), pos: n.pos})
+//let to_node = n => Point.(n.id, Node.{word: id_to_word(n.id), pos: n.pos})
+let to_node = n => Point.(n.id, Node.{word: "hello", pos: n.pos})
 
-let node_ids = get_nodes(bear_graph)
-let points = List.map(mk_bear_point, node_ids)
-let nodes = List.map(to_node, points) |> from_node_list
-
-let initial = {
-    engine: Engine.init(points),
-    graph: bear_graph,
-    edges: get_edges(bear_graph) |> List.map(((_, e, _)) => (e, ())) |> from_edge_list,
-    nodes: nodes,
-    selectedNode: None
+let prepare = graph => {
+    let node_ids = get_nodes(graph);
+    let points = List.map(mk_root_point, node_ids);
+    let nodes = List.map(to_node, points) |> from_node_list;
+    {
+        engine: Engine.init(points),
+        graph: graph,
+        edges: get_edges(graph) |> List.map(((_, e, _)) => (e, ())) |> from_edge_list,
+        nodes,
+        selectedNode: None
+    }
 }
+
+let initial = prepare(my_graph)

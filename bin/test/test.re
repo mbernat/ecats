@@ -1,4 +1,4 @@
-open Lambda
+open Lambda.Term
 
 debug_print(10, ex)
 debug_print(10, ex2)

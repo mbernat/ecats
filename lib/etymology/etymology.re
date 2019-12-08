@@ -31,9 +31,7 @@ let pre_words = [
     ("xers", "Persian")
 ];
 
-module NodeId = Common.Id.MkInt ()
-module EdgeId = Common.Id.MkInt ()
-module G = Graph.Persistent.Digraph.ConcreteBidirectionalLabeled(NodeId, EdgeId)
+open Common.Graphs
 
 let word_id_list = List.map(((w, _)) => (w, NodeId.allocate()), pre_words);
 let word_to_id = w => List.find(((w', _)) => w == w', word_id_list) |> Common.Util.snd;

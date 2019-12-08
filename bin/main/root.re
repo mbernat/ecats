@@ -2,6 +2,7 @@
 open Revery.UI;
 open Revery.UI.Components;
 open Common
+open Graphs
 open Etymology
 open Graph
 

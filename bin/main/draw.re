@@ -56,7 +56,7 @@ let standard_edge = (edge, pos, v) => {
         height(int_of_float(thickness))
     ];
     let label =
-        String.concat("", ["      ", EdgeId.string_of(edge)]);
+        String.concat("", ["      ", Graphs.EdgeId.string_of(edge)]);
     <View style=style>
         <Text text=label style=Styles.text />
     </View>
