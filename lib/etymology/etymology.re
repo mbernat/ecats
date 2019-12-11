@@ -32,6 +32,7 @@ let pre_words = [
 ];
 
 open Common.Graphs
+open Data
 
 let word_id_list = List.map(((w, _)) => (w, NodeId.allocate()), pre_words);
 let word_to_id = w => List.find(((w', _)) => w == w', word_id_list) |> Common.Util.snd;
@@ -55,14 +56,13 @@ let child_parent_list = [
     ("xers", "Hŕ̥šah")
 ];
 
-let add_word = (g, (w, l)) => G.add_vertex(g, word_to_id(w))
-let pre_bear_graph = List.fold_left(add_word, G.empty, pre_words);
+let add_word = (d, (w, l)) => add_node(word_to_id(w), w, d)
+let pre_bear_graph = List.fold_left(add_word, empty, pre_words);
 
-let add_edge = (g, (c, p)) => {
+let add_edge = (d, (c, p)) => {
     let s = word_to_id(p);
     let t = word_to_id(c);
     let id = EdgeId.allocate();
-    let edge = G.E.create(s, id, t);
-    G.add_edge_e(g, edge);
+    add_edge(id, (), s, t, d)
 }
 let bear_graph = List.fold_left(add_edge, pre_bear_graph, child_parent_list)

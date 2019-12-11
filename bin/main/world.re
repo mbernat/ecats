@@ -8,18 +8,19 @@ module Node = {
         word: string,
         pos: Vec.t
     }
+
+    let from_lambda_node = n => {
+        open Lambda.Graph;
+        {
+            word: Node.to_string(n),
+            pos: n.Node.pos
+        }
+    }
 }
 
-module NodeMap = Map.Make(NodeId)
-module EdgeMap = Map.Make(EdgeId)
-
-module G = Graph.Persistent.Digraph.ConcreteBidirectionalLabeled(NodeId, EdgeId)
-
 type t = {
+    data: Data.t(Node.t, Lambda.Graph.Order.t),
     engine: Engine.t(NodeId.t),
-    graph: G.t,
-    nodes: NodeMap.t(Node.t),
-    edges: EdgeMap.t(unit),
     selectedNode: option((NodeId.t, Node.t))
 };
 
@@ -33,8 +34,8 @@ let mk_point = (id, pos) =>
     };
 
 let random_pos = () => {
-    let top_left = 200.;
-    let extent = 1000.;
+    let top_left = 100.;
+    let extent = 500.;
     let x = top_left +. Random.float(extent);
     let y = top_left +. Random.float(extent);
     Vec.{x: x, y: y}
@@ -42,20 +43,13 @@ let random_pos = () => {
 
 let mk_random_point = n => mk_point(n, random_pos())
 
-// TODO abstract away the dependency on concrete graphs (etymology/lambda)
-//let (root, my_graph) = (Etymology.root, Etymology.bear_graph)
-let (root, my_graph) = Lambda.Graph.of_term(Lambda.Term.ex3)
-
-let mk_root_point = n => {
-    let point = mk_random_point(n);
-    if (n == root)
+let mk_root_point = (root, (id, n)) => {
+    let point = mk_point(id, n.Node.pos);
+    if (id == root)
         {...point, mass: None}
     else
         point
 };
-
-let get_nodes = g => G.fold_vertex(List.cons, g, [])
-let get_edges = g => G.fold_edges_e(List.cons, g, [])
 
 let from_node_list = l => {
     let f = (m, (k, v)) => NodeMap.add(k, v, m);
@@ -77,26 +71,30 @@ module ResolvedEdge = {
     }
 
     let resolve = (w, (src_id, id, dest_id)) => {
-        let src = NodeMap.find(src_id, w.nodes)
-        let dest = NodeMap.find(dest_id, w.nodes);
+        let src = NodeMap.find(src_id, w.data.nodes)
+        let dest = NodeMap.find(dest_id, w.data.nodes);
         {id, src_id, src, dest_id, dest}
     }
 }
 
-//let to_node = n => Point.(n.id, Node.{word: id_to_word(n.id), pos: n.pos})
-let to_node = n => Point.(n.id, Node.{word: "hello", pos: n.pos})
-
-let prepare = graph => {
-    let node_ids = get_nodes(graph);
-    let points = List.map(mk_root_point, node_ids);
-    let nodes = List.map(to_node, points) |> from_node_list;
+let prepare = (root, data) => {
+    open Data
+    let data' = {...data, nodes: NodeMap.map(Node.from_lambda_node, data.nodes)}
+    let nodes = NodeMap.bindings(data'.nodes)
+    let points = List.map(mk_root_point(root), nodes);
     {
+        data: data',
         engine: Engine.init(points),
-        graph: graph,
-        edges: get_edges(graph) |> List.map(((_, e, _)) => (e, ())) |> from_edge_list,
-        nodes,
         selectedNode: None
     }
 }
 
-let initial = prepare(my_graph)
+let box = Lambda.Graph.Box.{
+    top_left: Vec.{x: 100., y: 100.},
+    bottom_right: Vec.{x: 1000., y: 1000.}
+}
+
+// TODO abstract away the dependency on concrete graphs (etymology/lambda)
+//let (root, my_graph) = (Etymology.root, Etymology.bear_graph)
+let g = Lambda.Graph.of_term(box, Lambda.Term.ex2)
+let initial = prepare(g.root, g.graph)

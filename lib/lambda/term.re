@@ -15,19 +15,24 @@ module Unique {
     }
 }
 
-type t = Var(Id.t) | Lam(Id.t, t) | App(t, t)
+type t'('a) = Var('a, Id.t) | Lam('a, Id.t, t'('a)) | App('a, t'('a), t'('a))
+
+type t = t'(unit)
+
+let var = id => Var((), id)
+let free = n => var(Free(n))
 
 let lam = f => {
     let x = Id.Bound(Unique.get())
-    Lam(x, f((Var(x))))
+    Lam((), x, f(var(x)))
 }
 
-let free = n => Var(Free(n))
+let app = (e1, e2) => App((), e1, e2)
 
-let ex0 = Var(Free("x"))
-let ex = App(lam(x => App(x, free("e"))), free("f"))
-let ex2 = App(App(free("e"), free("f")), App(free("g"), free("h")))
-let ex3 = App(lam(x => App(x, x)), lam(x => App(x, x)))
+let ex0 = free("x")
+let ex = app(lam(x => app(x, free("e"))), free("f"))
+let ex2 = app(app(free("e"), free("f")), app(free("g"), free("h")))
+let ex3 = app(lam(x => app(x, x)), lam(x => app(x, x)))
 
 /*
 Two ways to do substitutions:
@@ -49,37 +54,41 @@ b1) need to collect all free variables in `e` and then replace all binders for t
     this can 
 b2) distinguish free and bound variables so that we can never confuse them
 */
-let rec sub = (f, x, e) => switch(f) {
-    | Var(y) => if (x == y) e else Var(y)
-    | Lam(y, g) => sub(g, x, e)
-    | App(g, h) => App(sub(g, x, e), sub(h, x, e))
+let rec sub_simple = (f, x, e) => switch(f) {
+    | Var(a, y) => if (x == y) e else Var(a, y)
+    | Lam(a, y, g) => sub_simple(g, x, e)
+    | App(a, g, h) => App(a, sub_simple(g, x, e), sub_simple(h, x, e))
 }
 
 // Lazy semantics, we only ever evaluate the first argument of `App`
-let rec step = t => switch(t) {
-    | Var(x) => Var(x)
-    | Lam(id, t) => Lam(id, t)
-    | App(x, e) => switch(x) {
-        | Var(y) => App(x, e)
-        | App(y, f) => App(step(x), e)
-        | Lam(y, f) => sub(f, y, e)
+let rec step_sub = (sub, t) => switch(t) {
+    | Var(a, x) => Var(a, x)
+    | Lam(a, id, t) => Lam(a, id, t)
+    | App(a, x, e) => switch(x) {
+        | Var(b, y) => App(a, x, e)
+        | App(b, y, f) => App(a, step_sub(sub, x), e)
+        // TODO use a and b in the substitution
+        | Lam(b, y, f) => sub(a, b, f, y, e)
     }
 }
 
+let step = step_sub(((), ()) => sub_simple)
+
 let rec alpha_eq = (e, f) => switch((e, f)) {
-    | (Var(x), Var(y)) => x == y
-    | (Lam(id1, e), Lam(id2, f)) => {
-        let v = Var(Bound(Unique.get()));
-        alpha_eq(sub(e, id1, v), sub(f, id2, v))
+    | (Var(_, x), Var(_, y)) => x == y
+    | (Lam(a, id1, e), Lam(_, id2, f)) => {
+        // TODO this is a bit dirty, we reuse an annotation because we're ignoring them anyway
+        let v = Var(a, Bound(Unique.get()));
+        alpha_eq(sub_simple(e, id1, v), sub_simple(f, id2, v))
     }
-    | (App(e1, e2), App(f1, f2)) => alpha_eq(e1, f1) && alpha_eq(e2, f2)
+    | (App(_, e1, e2), App(_, f1, f2)) => alpha_eq(e1, f1) && alpha_eq(e2, f2)
     | (_, _) => false
 }
 
 let rec to_string = t => switch(t) {
-    | Var(id) => Id.to_string(id)
-    | Lam(id, e) => "(\\" ++ Id.to_string(id) ++ " -> " ++ to_string(e) ++ ")"
-    | App(f, e) => "(" ++ to_string(f) ++ " @ " ++ to_string(e) ++ ")"
+    | Var(_, id) => Id.to_string(id)
+    | Lam(_, id, e) => "(\\" ++ Id.to_string(id) ++ " -> " ++ to_string(e) ++ ")"
+    | App(_, f, e) => "(" ++ to_string(f) ++ " @ " ++ to_string(e) ++ ")"
 }
 
 let rec debug_print = (n, t) => {

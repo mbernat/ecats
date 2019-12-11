@@ -16,7 +16,10 @@ let node = (oSel, (id, node)) => {
         position(`Absolute),
         left(int_of_float(pos.x)),
         top(int_of_float(pos.y)),
-        height(30)
+        height(70),
+        padding(10),
+        border(Revery.Colors.black, 4),
+        borderRadius(4.)
     ];
     <View style=style>
         <Text style=Styles.text text=node.Node.word />

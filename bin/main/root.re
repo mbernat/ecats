@@ -5,6 +5,7 @@ open Common
 open Graphs
 open Etymology
 open Graph
+open Data
 
 let tick = 1000. /. 60.;
 
@@ -17,16 +18,17 @@ module Main {
 
     let add_edge = ((node_id, node), state) => {
         open World
-        let graph = switch(state.selectedNode) {
+        let data = switch(state.selectedNode) {
             | Some(prevSel) => {
                 let id = EdgeId.allocate();
-                G.add_edge_e(state.graph, (fst(prevSel), id, node_id))
+                //TODO this doesn't preserve structure of lambda terms
+                add_edge(id, Lambda.Graph.Order.First, fst(prevSel), node_id, state.data)
             }
-            | None => state.graph
+            | None => state.data
         };
         {
             ...state,
-            graph: graph,
+            data: data,
             selectedNode: Some((node_id, node))
         }
     }
@@ -36,29 +38,26 @@ module Main {
         open Vec
         let id = NodeId.allocate();
         let node = Node.{word: NodeId.string_of(id), pos: pos}
-        let nodes = NodeMap.add(id, node, state.nodes)
-        let graph = G.add_vertex(state.graph, id);
+        let data = add_node(id, node, state.data)
         let point = World.mk_point(id, pos);
         let engine = Physics.Engine.add_point(point, state.engine);
         {
-            nodes,
-            edges: state.edges,
+            data,
             engine,
-            graph,
             selectedNode: Some((id, node))
         }
     }
 
-    let step_physics = (state) => {
+    let step_physics = state => {
         open World
         open Physics
         let k = 5e-5;
         let l = 1e2;
-        let c = 2e1;
+        let c = 5e1;
         let d = 5e-3;
-        let g = 3e-3;
+        let g = 2e-3;
         let add_springs_for_edges = engine => {
-            let edges = get_edges(state.graph);
+            let edges = get_edges(state.data);
             module PairSet = Set.Make ({type t = (NodeId.t, NodeId.t); let compare = compare});
             let add_pair = (s, (source, id, dest)) => {
                 let pair = if (source < dest)
@@ -83,11 +82,11 @@ module Main {
             let point = List.find(p => p.Point.id == id, points);
             Node.{...n, pos: point.Point.pos}
         };
-        let nodes = NodeMap.mapi(update_node, state.nodes);
+        let data = {...state.data, nodes: NodeMap.mapi(update_node, state.data.nodes)};
         {
             ...state,
-            engine: engine,
-            nodes: nodes
+            data: data,
+            engine: engine
         }
     }
     
@@ -99,7 +98,7 @@ module Main {
             | Click(pos) => {
                 open World;
                 let f = (_, n) => Vec.dist(n.Node.pos, pos) < 100.
-                let nearby_bindings = state.nodes
+                let nearby_bindings = state.data.nodes
                     |> NodeMap.filter(f)
                     |> NodeMap.bindings;
                 let oNode = List.nth_opt(nearby_bindings, 0);
@@ -133,8 +132,8 @@ module Main {
             
             // Draw the graph
             open World
-            let nodes = List.map(Draw.node(state.selectedNode), NodeMap.bindings(state.nodes));
-            let edges = List.map(e => Draw.edge(ResolvedEdge.resolve(state, e)), get_edges(state.graph));
+            let nodes = List.map(Draw.node(state.selectedNode), NodeMap.bindings(state.data.nodes));
+            let edges = List.map(e => Draw.edge(ResolvedEdge.resolve(state, e)), get_edges(state.data));
             let items = List.append(nodes, edges);
 
             // Computes the coordinates of the click relative to the parent element

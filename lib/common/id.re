@@ -11,8 +11,6 @@ module type S = {
     let default: t;
 }
 
-exception DefaultIdNotSupported;
-
 module MkInt(): S = {
     type t = int;
 
@@ -23,5 +21,5 @@ module MkInt(): S = {
     let compare = compare;
     let hash = Hashtbl.hash;
     let equal = (==);
-    let default = 0//raise(DefaultIdNotSupported)
+    let default = 0
 }

@@ -6,5 +6,5 @@ let text =
   Style.[
     fontSize(30),
     fontFamily(font),
-    color(Colors.black),
+    color(Colors.black)
   ];
