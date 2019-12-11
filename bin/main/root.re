@@ -12,6 +12,7 @@ let tick = 1000. /. 60.;
 module Main {
     type action =
         | Click(Vec.t)
+        | Step
         | Tick;
 
     type state = World.t
@@ -37,11 +38,13 @@ module Main {
         open World
         open Vec
         let id = NodeId.allocate();
-        let node = Node.{word: NodeId.string_of(id), pos: pos}
+        let var_id = Lambda.Term.Id.Free(NodeId.string_of(id))
+        let node = Node.{name: Lambda.Graph.Name.Var(var_id), pos: pos}
         let data = add_node(id, node, state.data)
         let point = World.mk_point(id, pos);
         let engine = Physics.Engine.add_point(point, state.engine);
         {
+            ...state,
             data,
             engine,
             selectedNode: Some((id, node))
@@ -55,7 +58,7 @@ module Main {
         let l = 1e2;
         let c = 5e1;
         let d = 5e-3;
-        let g = 2e-3;
+        let g = 1e-3;
         let add_springs_for_edges = engine => {
             let edges = get_edges(state.data);
             module PairSet = Set.Make ({type t = (NodeId.t, NodeId.t); let compare = compare});
@@ -108,6 +111,7 @@ module Main {
                 }
             }
             | Tick => step_physics(state)
+            | Step => World.step_lambda(state)
         };
         
     let component = React.component("Main");
@@ -179,6 +183,7 @@ module Main {
                         onMouseDown=handleClick>
                         ...items
                     </View>
+                    <Button title="hi" onClick={() => dispatch(Step)} />
                 </View>;
             (hooks, element)
         });

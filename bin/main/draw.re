@@ -21,8 +21,9 @@ let node = (oSel, (id, node)) => {
         border(Revery.Colors.black, 4),
         borderRadius(4.)
     ];
+    let label = Node.to_string(node);
     <View style=style>
-        <Text style=Styles.text text=node.Node.word />
+        <Text style=Styles.text text=label />
     </View>
 }
 

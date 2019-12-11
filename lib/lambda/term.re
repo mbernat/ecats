@@ -15,7 +15,18 @@ module Unique {
     }
 }
 
+// TODO Try to make this less awful
 type t'('a) = Var('a, Id.t) | Lam('a, Id.t, t'('a)) | App('a, t'('a), t'('a))
+let get_annot = t => switch(t) {
+    | Var(a, _) => a
+    | Lam(a, _, _) => a
+    | App(a, _, _) => a
+}
+let set_annot = (a, t) => switch(t) {
+    | Var(_, x) => Var(a, x)
+    | Lam(_, x, b) => Lam(a, x, b)
+    | App(_, e, f) => App(a, e, f)
+}
 
 type t = t'(unit)
 
@@ -55,24 +66,33 @@ b1) need to collect all free variables in `e` and then replace all binders for t
 b2) distinguish free and bound variables so that we can never confuse them
 */
 let rec sub_simple = (f, x, e) => switch(f) {
-    | Var(a, y) => if (x == y) e else Var(a, y)
-    | Lam(a, y, g) => sub_simple(g, x, e)
-    | App(a, g, h) => App(a, sub_simple(g, x, e), sub_simple(h, x, e))
+    | Var((), y) => if (x == y) e else Var((), y)
+    | Lam((), y, g) => sub_simple(g, x, e)
+    | App((), g, h) => App((), sub_simple(g, x, e), sub_simple(h, x, e))
 }
 
-// Lazy semantics, we only ever evaluate the first argument of `App`
+let rec sub_annot = (f, x, e) => switch(f) {
+    | Var(c, y) => if (x == y) {
+            let a = get_annot(e)
+            e
+        } else
+            Var(c, y)
+    | Lam(a, y, g) => sub_annot(g, x, e)
+    | App(a, g, h) => App(a, sub_annot(g, x, e), sub_annot(h, x, e))
+}
+
+// Non-strict semantics, we only ever evaluate the first argument of `App`
 let rec step_sub = (sub, t) => switch(t) {
     | Var(a, x) => Var(a, x)
     | Lam(a, id, t) => Lam(a, id, t)
     | App(a, x, e) => switch(x) {
         | Var(b, y) => App(a, x, e)
         | App(b, y, f) => App(a, step_sub(sub, x), e)
-        // TODO use a and b in the substitution
-        | Lam(b, y, f) => sub(a, b, f, y, e)
+        | Lam(b, y, f) => sub(f, y, e)
     }
 }
 
-let step = step_sub(((), ()) => sub_simple)
+let step_simple = step_sub(sub_simple)
 
 let rec alpha_eq = (e, f) => switch((e, f)) {
     | (Var(_, x), Var(_, y)) => x == y
@@ -91,8 +111,8 @@ let rec to_string = t => switch(t) {
     | App(_, f, e) => "(" ++ to_string(f) ++ " @ " ++ to_string(e) ++ ")"
 }
 
-let rec debug_print = (n, t) => {
+let rec debug_print = (step, n, t) => {
     print_endline(to_string(t));
     let next = step(t)
-    if (n > 0 && !alpha_eq(t, next)) debug_print(n-1, next)
+    if (n > 0 && !alpha_eq(t, next)) debug_print(step, n-1, next)
 }

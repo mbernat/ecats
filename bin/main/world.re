@@ -3,23 +3,11 @@ open Graphs
 open Graph
 open Physics
 
-module Node = {
-    type t = {
-        word: string,
-        pos: Vec.t
-    }
-
-    let from_lambda_node = n => {
-        open Lambda.Graph;
-        {
-            word: Node.to_string(n),
-            pos: n.Node.pos
-        }
-    }
-}
+module Node = Lambda.Graph.Node
 
 type t = {
     data: Data.t(Node.t, Lambda.Graph.Order.t),
+    root: NodeId.t,
     engine: Engine.t(NodeId.t),
     selectedNode: option((NodeId.t, Node.t))
 };
@@ -51,16 +39,6 @@ let mk_root_point = (root, (id, n)) => {
         point
 };
 
-let from_node_list = l => {
-    let f = (m, (k, v)) => NodeMap.add(k, v, m);
-    List.fold_left(f, NodeMap.empty, l)
-}
-
-let from_edge_list = l => {
-    let f = (m, (k, v)) => EdgeMap.add(k, v, m);
-    List.fold_left(f, EdgeMap.empty, l)
-}
-
 module ResolvedEdge = {
     type t = {
         id: EdgeId.t,
@@ -79,11 +57,11 @@ module ResolvedEdge = {
 
 let prepare = (root, data) => {
     open Data
-    let data' = {...data, nodes: NodeMap.map(Node.from_lambda_node, data.nodes)}
-    let nodes = NodeMap.bindings(data'.nodes)
+    let nodes = NodeMap.bindings(data.nodes)
     let points = List.map(mk_root_point(root), nodes);
     {
-        data: data',
+        data,
+        root,
         engine: Engine.init(points),
         selectedNode: None
     }
@@ -96,5 +74,15 @@ let box = Lambda.Graph.Box.{
 
 // TODO abstract away the dependency on concrete graphs (etymology/lambda)
 //let (root, my_graph) = (Etymology.root, Etymology.bear_graph)
-let g = Lambda.Graph.of_term(box, Lambda.Term.ex2)
+open Lambda
+let g = Graph.of_term(box, Term.ex)
 let initial = prepare(g.root, g.graph)
+
+let step_lambda = state => {
+    open Data
+    let g = Lambda.Graph.Rooted.{graph: state.data, root: state.root}
+        |> Graph.view
+        |> Term.step_sub(Term.sub_annot)
+        |> Graph.of_annotated_term;
+    prepare(g.root, g.graph)
+}

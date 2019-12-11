@@ -129,14 +129,13 @@ module Annotated = {
 
 let rec of_annotated_term = t => switch(t) {
     | Var(a, x) => {
-        open Annotated
-        let root = a.id
-        let node = Node.{name: Name.Var(x), pos: a.pos}
+        let root = NodeId.allocate()
+        let node = Node.{name: Name.Var(x), pos: a.Annotated.pos}
         let graph = add_node(root, node, empty);
         Rooted.{graph, root}
     }
     | Lam(a, x, e) => {
-        let root = a.id
+        let root = NodeId.allocate()
         open Rooted
         let body = of_annotated_term(e);
         let node = Node.{name: Name.Lam(x), pos: a.pos}
@@ -146,7 +145,7 @@ let rec of_annotated_term = t => switch(t) {
         {graph, root}
     }
     | App(a, e1, e2) => {
-        let root = a.id
+        let root = NodeId.allocate()
         open Rooted
         open Box
         let lam = of_annotated_term(e1);
@@ -160,3 +159,42 @@ let rec of_annotated_term = t => switch(t) {
     }
 }
 
+exception ViewBadChildren(Name.t, list(G.edge))
+
+let view = rooted => {
+    open Rooted
+    let graph = rooted.graph
+    let rec view' = id => {
+        let node = NodeMap.find(id, graph.nodes)
+        open Node
+        let annot = Annotated.{id: id, pos: node.Node.pos}
+        open Name
+        switch(node.name) {
+            | Var(x) => Term.Var(annot, x)
+            | Lam(x) => {
+                let children = G.succ_e(graph.graph, id)
+                switch(children) {
+                    | [(_, _, c)] => Term.Lam(annot, x, view'(c))
+                    | cs => raise(ViewBadChildren(node.name, cs))
+                }
+            }
+            | App => {
+                let children = G.succ_e(graph.graph, id)
+                switch(children) {
+                    | [(_, l1, c1), (_, l2, c2)] as cs => {
+                        let e1 = EdgeMap.find(l1, graph.edges)
+                        let e2 = EdgeMap.find(l2, graph.edges)
+                        let (c1, c2) = switch((e1, e2)) {
+                            | ((Order.First, Order.Second)) => (c1, c2)
+                            | ((Order.Second, Order.First)) => (c2, c1)
+                            | _ => raise(ViewBadChildren(node.name, cs))
+                        }
+                        Term.App(annot, view'(c1), view'(c2))
+                    }
+                    | cs => raise(ViewBadChildren(node.name, cs))
+                }
+            }
+        }
+    }
+    view'(rooted.root)
+}
