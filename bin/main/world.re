@@ -75,14 +75,15 @@ let box = Lambda.Graph.Box.{
 // TODO abstract away the dependency on concrete graphs (etymology/lambda)
 //let (root, my_graph) = (Etymology.root, Etymology.bear_graph)
 open Lambda
-let g = Graph.of_term(box, Term.ex)
+let g = Graph.of_term(box, Term.ex3)
 let initial = prepare(g.root, g.graph)
 
 let step_lambda = state => {
     open Data
+    // TODO compute boxes and use them to reposition nodes after substitutions
     let g = Lambda.Graph.Rooted.{graph: state.data, root: state.root}
         |> Graph.view
-        |> Term.step_sub(Term.sub_annot)
+        |> Term.step
         |> Graph.of_annotated_term;
     prepare(g.root, g.graph)
 }

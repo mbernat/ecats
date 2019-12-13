@@ -92,7 +92,7 @@ module Main {
             engine: engine
         }
     }
-    
+
     // TODO handle node selection via Revery
     let reducer = (action, state) =>
         switch(action) {
@@ -113,9 +113,9 @@ module Main {
             | Tick => step_physics(state)
             | Step => World.step_lambda(state)
         };
-        
+
     let component = React.component("Main");
-    let createElement = (~children as _, ~world, ()) => 
+    let createElement = (~children as _, ~world, ()) =>
         component(hooks => {
             let (refOption, setRefOption, hooks) =
                 Hooks.state(None, hooks);
@@ -133,7 +133,7 @@ module Main {
                     },
                     hooks
                 );
-            
+
             // Draw the graph
             open World
             let nodes = List.map(Draw.node(state.selectedNode), NodeMap.bindings(state.data.nodes));
@@ -175,7 +175,7 @@ module Main {
                     right(0)
                 ];
 
-            let element = 
+            let element =
                 <View style=outerStyle>
                     <View
                         ref={r => setRefOption(Some(r))}
@@ -183,7 +183,7 @@ module Main {
                         onMouseDown=handleClick>
                         ...items
                     </View>
-                    <Button title="hi" onClick={() => dispatch(Step)} />
+                    <Button title="step" onClick={() => dispatch(Step)} />
                 </View>;
             (hooks, element)
         });
