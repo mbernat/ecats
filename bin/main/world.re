@@ -5,12 +5,143 @@ open Physics
 
 module Node = Lambda.Graph.Node
 
+type foo('f) = {
+    a: app(int, 'f)
+}
+
+module L = {
+    type t('a) = list('a)
+}
+module F = Newtype1(L)
+
 type t = {
     data: Data.t(Node.t, Lambda.Graph.Order.t),
     root: NodeId.t,
     engine: Engine.t(NodeId.t),
     selectedNode: option((NodeId.t, Node.t))
 };
+
+/*
+Current data:
+graph (node ids + edges ~ (edge id, source, dest))
+node pos
+node name ~ lambda term info
+edge ordering
+engine: forall nodes: id, pos, vel, forces, mass
+selected id (this should really be a component, for when multiple entities are selected!!!!!!!!!!)
+*/
+
+/*
+components:
+position
+node
+edge
+lambda term info
+lambda child ordering info
+physical (mass, vel)
+forces
+selected
+
+we'll also need a couple others for subsystems:
+lambda modification
+rendering
+charges
+physics constants?
+*/
+
+module Id = Id.MkInt ()
+
+module Physical = {
+    type t = {
+        mass: float,
+        vel: Vec.t
+    }
+}
+
+module Forces = {
+    type t = list(Vec.t)
+}
+
+module Edge = {
+    type t = {
+        source: Id.t,
+        target: Id.t
+    }
+}
+
+
+module Components2 = {
+    type t('f) = {
+        position: app(Vec.t, 'f),
+        node: app(unit, 'f),
+        edge: app(Edge.t, 'f),
+        lambda_term: app(Lambda.Graph.Name.t, 'f),
+        lambda_child: app(Lambda.Graph.Order.t, 'f),
+        physical: app(Physical.t, 'f),
+        forces: app(Forces.t, 'f),
+        selected: app(unit, 'f)
+    }
+}
+
+module Mappy = Newtype1({ type t('a) = EntityMap.t('a) })
+
+module Components = {
+    type t = {
+        position: Vec.t,
+        node: unit,
+        edge: Edge.t,
+        lambda_term: Lambda.Graph.Name.t,
+        lambda_child: Lambda.Graph.Order.t,
+        physical: Physical.t,
+        forces: Forces.t,
+        selected: unit
+    }
+}
+
+module EntityMap = Map.Make(Id)
+
+module World = {
+    type t = {
+        position: EntityMap.t(Vec.t),
+        node: EntityMap.t(unit),
+        edge: EntityMap.t(Edge.t),
+        lambda_term: EntityMap.t(Lambda.Graph.Name.t),
+        lambda_child: EntityMap.t(Lambda.Graph.Order.t),
+        physical: EntityMap.t(Physical.t),
+        forces: EntityMap.t(Forces.t),
+        selected: EntityMap.t(unit)
+    }
+}
+
+module Entity = {
+    type t = {
+        position: option(Vec.t),
+        node: option(unit),
+        edge: option(Edge.t),
+        lambda_term: option(Lambda.Graph.Name.t),
+        lambda_child: option(Lambda.Graph.Order.t),
+        physical: option(Physical.t),
+        forces: option(Forces.t),
+        selected: option(unit)
+    }
+}
+
+module Update = {
+    type t('a) = Set('a) | Keep | Unset
+}
+
+module EntityUpdate = {
+    type t = {
+        position: Update.t(Vec.t),
+        node: Update.t(unit),
+        edge: Update.t(Edge.t),
+        lambda_term: Update.t(Lambda.Graph.Name.t),
+        lambda_child: Update.t(Lambda.Graph.Order.t),
+        physical: Update.t(Physical.t),
+        forces: Update.t(Forces.t),
+        selected: Update.t(unit)
+    }
+}
 
 let mk_point = (id, pos) =>
     Point.{
