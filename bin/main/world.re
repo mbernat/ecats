@@ -5,22 +5,6 @@ open Physics
 
 module Node = Lambda.Graph.Node
 
-type foo('f) = {
-    a: app(int, 'f)
-}
-
-module L = {
-    type t('a) = list('a)
-}
-module F = Newtype1(L)
-
-type t = {
-    data: Data.t(Node.t, Lambda.Graph.Order.t),
-    root: NodeId.t,
-    engine: Engine.t(NodeId.t),
-    selectedNode: option((NodeId.t, Node.t))
-};
-
 /*
 Current data:
 graph (node ids + edges ~ (edge id, source, dest))
@@ -51,17 +35,6 @@ physics constants?
 
 module Id = Id.MkInt ()
 
-module Physical = {
-    type t = {
-        mass: float,
-        vel: Vec.t
-    }
-}
-
-module Forces = {
-    type t = list(Vec.t)
-}
-
 module Edge = {
     type t = {
         source: Id.t,
@@ -69,7 +42,15 @@ module Edge = {
     }
 }
 
+module Physical = {
+    type t = {
+        mass: float,
+        velocity: Vec.t
+    }
+}
 
+/*
+polymorphic components using higher library
 module Components2 = {
     type t('f) = {
         position: app(Vec.t, 'f),
@@ -84,8 +65,13 @@ module Components2 = {
 }
 
 module Mappy = Newtype1({ type t('a) = EntityMap.t('a) })
+module World = Components2.t(Mappy.t)
 
-module Components = {
+module Maybe = Newtype1({ type t('a) = option('a) })
+module Entity = Component2.t(Maybe.t)
+*/
+
+module Generic = {
     type t = {
         position: Vec.t,
         node: unit,
@@ -100,7 +86,7 @@ module Components = {
 
 module EntityMap = Map.Make(Id)
 
-module World = {
+module EntityMaps = {
     type t = {
         position: EntityMap.t(Vec.t),
         node: EntityMap.t(unit),
@@ -111,6 +97,22 @@ module World = {
         forces: EntityMap.t(Forces.t),
         selected: EntityMap.t(unit)
     }
+
+    let empty = {
+        position: EntityMap.empty,
+        node: EntityMap.empty,
+        edge: EntityMap.empty,
+        lambda_term: EntityMap.empty,
+        lambda_child: EntityMap.empty,
+        physical: EntityMap.empty,
+        forces: EntityMap.empty,
+        selected: EntityMap.empty
+    }
+}
+
+type t = {
+    components: EntityMaps.t,
+    entities: list(Id.t)
 }
 
 module Entity = {
@@ -124,10 +126,68 @@ module Entity = {
         forces: option(Forces.t),
         selected: option(unit)
     }
+
+    let default = {
+        position: None,
+        node: None,
+        edge: None,
+        lambda_term: None,
+        lambda_child: None,
+        physical: None,
+        forces: None,
+        selected: None
+    }
 }
 
 module Update = {
     type t('a) = Set('a) | Keep | Unset
+}
+
+let get_entity_comp = (id, cs:EntityMaps.t) => {
+    let entity = Entity.{
+        position: EntityMap.find_opt(id, cs.position),
+        node: EntityMap.find_opt(id, cs.node),
+        edge: EntityMap.find_opt(id, cs.edge),
+        lambda_term: EntityMap.find_opt(id, cs.lambda_term),
+        lambda_child: EntityMap.find_opt(id, cs.lambda_child),
+        physical: EntityMap.find_opt(id, cs.physical),
+        forces: EntityMap.find_opt(id, cs.forces),
+        selected: EntityMap.find_opt(id, cs.selected)
+    };
+    (id, entity)
+}
+
+let get_entity = (id, w) => get_entity_comp(id, w.components)
+
+let efilter = (p, w) => {
+    List.map(id => get_entity(id, w), w.entities)
+    |> List.filter(((_, e)) => p(e))
+}
+
+let maybe_add = (id, c, cm) => switch (c) {
+    | Some (c) => EntityMap.add(id, c, cm)
+    | None => cm
+}
+
+let add_components = (id, e, cs) => {
+    EntityMaps.{
+        position: maybe_add(id, e.Entity.position, cs.position),
+        node: maybe_add(id, e.Entity.node, cs.node),
+        edge: maybe_add(id, e.Entity.edge, cs.edge),
+        lambda_term: maybe_add(id, e.Entity.lambda_term, cs.lambda_term),
+        lambda_child: maybe_add(id, e.Entity.lambda_child, cs.lambda_child),
+        physical: maybe_add(id, e.Entity.physical, cs.physical),
+        forces: maybe_add(id, e.Entity.forces, cs.forces),
+        selected: maybe_add(id, e.Entity.selected, cs.selected)
+    }
+}
+
+let add_entity = (e, w) => {
+    let id = Id.allocate();
+    {
+        components: add_components(id, e, w.components),
+        entities: List.cons(id, w.entities)
+    }
 }
 
 module EntityUpdate = {
@@ -141,16 +201,45 @@ module EntityUpdate = {
         forces: Update.t(Forces.t),
         selected: Update.t(unit)
     }
+
+    let default = {
+        position: Keep,
+        node: Keep,
+        edge: Keep,
+        lambda_term: Keep,
+        lambda_child: Keep,
+        physical: Keep,
+        forces: Keep,
+        selected: Keep
+    }
 }
 
-let mk_point = (id, pos) =>
-    Point.{
-        id: id,
-        pos: pos,
-        vel: Vec.zero,
-        forces: [],
-        mass: Some(1.)
-    };
+let update = (id, up, cm) => switch(up) {
+    | Update.Set(c) => EntityMap.add(id, c, cm)
+    | Keep => cm
+    | Unset => EntityMap.remove(id, cm)
+}
+
+let update_components = (id, e, cs) => {
+    EntityMaps.{
+        position: update(id, e.EntityUpdate.position, cs.position),
+        node: update(id, e.EntityUpdate.node, cs.node),
+        edge: update(id, e.EntityUpdate.edge, cs.edge),
+        lambda_term: update(id, e.EntityUpdate.lambda_term, cs.lambda_term),
+        lambda_child: update(id, e.EntityUpdate.lambda_child, cs.lambda_child),
+        physical: update(id, e.EntityUpdate.physical, cs.physical),
+        forces: update(id, e.EntityUpdate.forces, cs.forces),
+        selected: update(id, e.EntityUpdate.selected, cs.selected)
+    }
+}
+
+let update_entity = (id, e, w) => {...w, components: update_components(id, e, w.components)}
+
+
+let emap = (f, w) => {
+    let update = (cs, id) => update_components(id, f(snd(get_entity_comp(id, cs))), cs);
+    {...w, components: List.fold_left(update, w.components, w.entities)}
+}
 
 let random_pos = () => {
     let top_left = 100.;
@@ -158,44 +247,6 @@ let random_pos = () => {
     let x = top_left +. Random.float(extent);
     let y = top_left +. Random.float(extent);
     Vec.{x: x, y: y}
-}
-
-let mk_random_point = n => mk_point(n, random_pos())
-
-let mk_root_point = (root, (id, n)) => {
-    let point = mk_point(id, n.Node.pos);
-    if (id == root)
-        {...point, mass: None}
-    else
-        point
-};
-
-module ResolvedEdge = {
-    type t = {
-        id: EdgeId.t,
-        src_id: NodeId.t,
-        src: Node.t,
-        dest_id: NodeId.t,
-        dest: Node.t
-    }
-
-    let resolve = (w, (src_id, id, dest_id)) => {
-        let src = NodeMap.find(src_id, w.data.nodes)
-        let dest = NodeMap.find(dest_id, w.data.nodes);
-        {id, src_id, src, dest_id, dest}
-    }
-}
-
-let prepare = (root, data) => {
-    open Data
-    let nodes = NodeMap.bindings(data.nodes)
-    let points = List.map(mk_root_point(root), nodes);
-    {
-        data,
-        root,
-        engine: Engine.init(points),
-        selectedNode: None
-    }
 }
 
 let box = Lambda.Graph.Box.{
@@ -206,15 +257,12 @@ let box = Lambda.Graph.Box.{
 // TODO abstract away the dependency on concrete graphs (etymology/lambda)
 //let (root, my_graph) = (Etymology.root, Etymology.bear_graph)
 open Lambda
-let g = Graph.of_term(box, Term.ex3)
-let initial = prepare(g.root, g.graph)
 
-let step_lambda = state => {
+let step_lambda = g => {
     open Data
     // TODO compute boxes and use them to reposition nodes after substitutions
-    let g = Lambda.Graph.Rooted.{graph: state.data, root: state.root}
+    g
         |> Graph.view
         |> Term.step
         |> Graph.of_annotated_term;
-    prepare(g.root, g.graph)
 }

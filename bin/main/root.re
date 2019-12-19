@@ -9,56 +9,158 @@ open Data
 
 let tick = 1000. /. 60.;
 
+/*
+
+what should systems do?
+they should be run every tick, in some order
+
+how should input be handled?
+just register handlers in Revery and treat them as systems
+
+should the state be stored in revery or elsewhere?
+is it reasonable to decouple the rendering and treat revery just as a backend?
+
+*/
+
 module Main {
     type action =
         | Click(Vec.t)
         | Step
         | Tick;
 
-    type state = World.t
-
-    let add_edge = ((node_id, node), state) => {
+    // needs: selection
+    // modifies: selection
+    // creates entity with: edge, lambda_child
+    let add_edge = (node_id, world) => {
         open World
-        let data = switch(state.selectedNode) {
-            | Some(prevSel) => {
-                let id = EdgeId.allocate();
-                //TODO this doesn't preserve structure of lambda terms
-                add_edge(id, Lambda.Graph.Order.First, fst(prevSel), node_id, state.data)
+        let k = 5e-5;
+        let l = 1e2;
+        let c = 5e1;
+        let selected = efilter(Entity.(e => e.node != None && e.selected != None), world);
+        let world' = switch(selected) {
+            | [(sel_id, _)] => {
+                let entity = {
+                    ...Entity.default,
+                    edge: Some(Edge.{ source: sel_id, target: node_id }),
+                    lambda_child: Some(Lambda.Graph.Order.First),
+                    forces: Some(
+                        Physics.Forces.{
+                            one_body: [],
+                            central: Central.[
+                                coulomb(c),
+                                spring(k, l)
+                            ],
+                            concrete: Vec.zero
+                    })
+                }
+                add_entity(entity, world)
             }
-            | None => state.data
+            | _ => world
         };
-        {
-            ...state,
-            data: data,
-            selectedNode: Some((node_id, node))
-        }
+        let update = EntityUpdate.{...default, selected: Set(())}
+        update_entity(node_id, update, world)
     }
 
-    let add_node = (pos, state) => {
+    // needs: nothing
+    // modifies: selection
+    // creates entity with: node, lambda_term, position, physical, forces
+    let mk_node = pos => {
         open World
         open Vec
         let id = NodeId.allocate();
         let var_id = Lambda.Term.Id.Free(NodeId.string_of(id))
-        let node = Node.{name: Lambda.Graph.Name.Var(var_id), pos: pos}
-        let data = add_node(id, node, state.data)
-        let point = World.mk_point(id, pos);
-        let engine = Physics.Engine.add_point(point, state.engine);
+        let term = Lambda.Graph.Name.Var(var_id);
+        let d = 5e-3;
+        let g = 1e-3;
+        let drag_force = p => Vec.scale(p.Physics.Point.velocity, -. d);
         {
-            ...state,
-            data,
-            engine,
-            selectedNode: Some((id, node))
+            ...Entity.default,
+            node: Some(()),
+            position: Some(pos),
+            physical: Some({
+                mass: 1.,
+                velocity: Vec.zero
+            }),
+            lambda_term: Some(term),
+            forces: Some(Physics.Forces.{
+                one_body: [
+                    OneBody.uniform({x: 0., y: g}),
+                    drag_force
+
+                ],
+                central: [],
+                concrete: Vec.zero
+            }),
+            selected: Some(())
         }
     }
 
-    let step_physics = state => {
+    let add_central_forces = world => {
         open World
-        open Physics
-        let k = 5e-5;
-        let l = 1e2;
-        let c = 5e1;
-        let d = 5e-3;
-        let g = 1e-3;
+        let edges = efilter(e => e.Entity.edge != None && e.Entity.forces != None, world);
+/*
+TODO convert edge forces into concrete point forces
+
+how do we handle multiple edges between two nodes?
+for now just add multiple forces; it's suboptimal but we don't care
+*/
+        world
+    }
+
+    // only uses forces.one_body & forces.concrete and updates forces.concrete
+    let add_one_body_forces = e => {
+        open World
+        open Entity
+
+        switch((e.position, e.physical, e.forces)) {
+            | (Some(position), Some(physical), Some(forces)) => {
+                let p = Physics.Point.{
+                    position: position,
+                    mass: physical.mass,
+                    velocity: physical.velocity
+                }
+                let add = (f, ob) => Vec.add(f, ob(p));
+                let concrete = List.fold_left(add, forces.concrete, forces.one_body);
+                {...EntityUpdate.default, forces: Set({...forces, concrete: concrete})}
+            }
+            | _ => EntityUpdate.default
+        }
+    }
+
+    // only uses forces.concrete
+    let step_point = e => {
+        open World
+        open Entity
+        switch((e.position, e.physical, e.forces)) {
+            | (Some(position), Some(physical), Some(forces)) => {
+                let p = Physics.Point.{
+                    position: position,
+                    mass: physical.mass,
+                    velocity: physical.velocity
+                }
+                let p' = Physics.step_point(tick, p, forces.concrete)
+                EntityUpdate.{
+                    ...default,
+                    position: Set(p'.position),
+                    physical: Set({
+                        mass: p'.mass,
+                        velocity: p'.velocity
+                    })
+                }
+            }
+            | _ => EntityUpdate.default
+        }
+    }
+
+    let step_physics = world => {
+        open World
+        world
+            |> emap(add_one_body_forces)
+            |> add_central_forces
+            |> emap(step_point)
+
+
+/*
         let add_springs_for_edges = engine => {
             let edges = get_edges(state.data);
             module PairSet = Set.Make ({type t = (NodeId.t, NodeId.t); let compare = compare});
@@ -73,45 +175,37 @@ module Main {
             let add_spring = ((a, b), e) => Force.add_pairwise(a, b, spring_force(k, l), e);
             PairSet.fold(add_spring, pairs, engine);
         }
-        let drag_force = p => Vec.scale(p.Point.vel, -. d);
-        let engine = state.engine
-            |> Force.add_gravity(Vec.{x: 0., y: g})
-            |> Force.add_uniform(drag_force)
-            |> Force.add_all_pairwise(coulomb_force(c))
-            |> add_springs_for_edges
-            |> Engine.step(tick);
-        let points = Engine.to_list(engine);
-        let update_node = (id, n) => {
-            let point = List.find(p => p.Point.id == id, points);
-            Node.{...n, pos: point.Point.pos}
-        };
-        let data = {...state.data, nodes: NodeMap.mapi(update_node, state.data.nodes)};
-        {
-            ...state,
-            data: data,
-            engine: engine
-        }
+
+
+
+*/
+
+
+
     }
 
     // TODO handle node selection via Revery
-    let reducer = (action, state) =>
+    let reducer = (action, world) =>
         switch(action) {
             // Clicking space creates a node and selects it
             // Clicking on a node creates an edge from the previously selected node
             | Click(pos) => {
                 open World;
-                let f = (_, n) => Vec.dist(n.Node.pos, pos) < 100.
-                let nearby_bindings = state.data.nodes
-                    |> NodeMap.filter(f)
-                    |> NodeMap.bindings;
-                let oNode = List.nth_opt(nearby_bindings, 0);
-                switch (oNode) {
-                    | Some(node) => add_edge(node, state)
-                    | None => add_node(pos, state)
+                let f = e => {
+                    open Entity
+                    switch (e.position) {
+                        | Some(epos) => e.node != None && Vec.dist(epos, pos) < 100.
+                        | None => false
+                    }
+                }
+                let nearby = efilter(f, world);
+                switch (nearby) {
+                    | [(node_id, _)] => add_edge(node_id, world)
+                    | _ => add_entity(mk_node(pos), world)
                 }
             }
-            | Tick => step_physics(state)
-            | Step => World.step_lambda(state)
+            | Tick => step_physics(world)
+            | Step => world//TODO World.step_lambda(world)
         };
 
     let component = React.component("Main");
