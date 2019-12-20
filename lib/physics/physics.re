@@ -61,10 +61,10 @@ module Forces = {
         // k is the spring constant, l the rest length
         let spring = (k, l, r) => -. k *. (r -. l)
 
-        let apply = (f, a, b) => {
+        let apply = (f, here, there) => {
             open Vec
 
-            let v = sub(a, b);
+            let v = sub(there, here);
             let r = abs(v);
             let n = scale(v, 1. /. r);
             // TODO what's the best way to handle collisions?

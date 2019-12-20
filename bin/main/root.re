@@ -47,6 +47,7 @@ module Main {
                         Physics.Forces.{
                             one_body: [],
                             central: Central.[
+                                // TODO the coulomb interaction shouldn't be attached to an edge
                                 coulomb(c),
                                 spring(k, l)
                             ],
@@ -58,7 +59,7 @@ module Main {
             | _ => world
         };
         let update = EntityUpdate.{...default, selected: Set(())}
-        update_entity(node_id, update, world)
+        update_entity(node_id, update, world')
     }
 
     // needs: nothing
@@ -72,6 +73,7 @@ module Main {
         let term = Lambda.Graph.Name.Var(var_id);
         let d = 5e-3;
         let g = 1e-3;
+        // TODO maybe we should attach hidden edges to all other nodes to model coloumb forces?
         let drag_force = p => Vec.scale(p.Physics.Point.velocity, -. d);
         {
             ...Entity.default,
@@ -95,16 +97,54 @@ module Main {
         }
     }
 
+    // TODO get rid of this
+    exception GotNone
+    let from_option = o => switch(o) {
+        | Some(x) => x
+        | None => raise(GotNone)
+    }
+
     let add_central_forces = world => {
         open World
-        let edges = efilter(e => e.Entity.edge != None && e.Entity.forces != None, world);
+        let es = efilter(e => e.Entity.edge != None && e.Entity.forces != None, world);
+        List.fold_left((w, (_, e)) => {
+            open Entity
+            switch (e.edge, e.forces) {
+                | (Some(edge), Some(forces)) => {
+                    open Physics.Forces
+                    // TODO add edge resolver
+                    let source = get_entity(edge.source, w)
+                    let target = get_entity(edge.target, w)
+                    let source_pos = from_option(source.position);
+                    let source_forces = from_option(source.forces);
+                    let target_pos = from_option(target.position);
+                    let target_forces = from_option(target.forces);
+                    let add_force = f => Central.apply(f, source_pos, target_pos)
+                    let force = List.fold_left((f, cf) => Vec.add(f, add_force(cf)), Vec.zero, forces.central);
+                    let source_update = EntityUpdate.{
+                        ...default,
+                        forces: Set({...source_forces, concrete: Vec.add(source_forces.concrete, force)})
+                    };
+                    let op_force = Vec.scale(force, -1.)
+                    let target_update = EntityUpdate.{
+                        ...default,
+                        forces: Set({...target_forces, concrete: Vec.add(source_forces.concrete, op_force)})
+                    };
+                    w
+                        |> update_entity(edge.source, source_update)
+                        |> update_entity(edge.target, target_update)
+                }
+                | _ => w
+            }
+        }, world, es)
 /*
 TODO convert edge forces into concrete point forces
 
 how do we handle multiple edges between two nodes?
 for now just add multiple forces; it's suboptimal but we don't care
 */
-        world
+
+
     }
 
     // only uses forces.one_body & forces.concrete and updates forces.concrete
@@ -158,30 +198,41 @@ for now just add multiple forces; it's suboptimal but we don't care
             |> emap(add_one_body_forces)
             |> add_central_forces
             |> emap(step_point)
+    }
 
+    let unit_option_to_bool = o => switch(o) {
+        | Some(()) => true
+        | None => false
+    }
 
-/*
-        let add_springs_for_edges = engine => {
-            let edges = get_edges(state.data);
-            module PairSet = Set.Make ({type t = (NodeId.t, NodeId.t); let compare = compare});
-            let add_pair = (s, (source, id, dest)) => {
-                let pair = if (source < dest)
-                    (source, dest)
-                else
-                    (dest, source)
-                PairSet.add(pair, s)
-            }
-            let pairs = List.fold_left(add_pair, PairSet.empty, edges);
-            let add_spring = ((a, b), e) => Force.add_pairwise(a, b, spring_force(k, l), e);
-            PairSet.fold(add_spring, pairs, engine);
-        }
+    let draw_nodes = world => {
+        open World
+        let nodes = efilter(e => e.node != None && e.position != None, world);
+        List.map(((id, node)) => {
+            open Entity
+            let position = from_option(node.position);
+            let label = Shared.Id.string_of(id);
+            Draw.node(position, label, unit_option_to_bool(node.selected))
+        }, nodes)
+    }
 
-
-
-*/
-
-
-
+    let draw_edges = world => {
+        open World
+        let edges = efilter(e => e.Entity.edge != None, world);
+        List.map(((id, e)) => {
+            open Entity
+            let edge = from_option(e.edge)
+            let source = get_entity(edge.source, world)
+            let target = get_entity(edge.target, world)
+            let resolved = Draw.ResolvedEdge.{
+                label: Shared.Id.string_of(id),
+                src_id: edge.source,
+                dest_id: edge.target,
+                src_pos: from_option(source.position),
+                dest_pos: from_option(target.position)
+            };
+            Draw.edge(resolved)
+        }, edges)
     }
 
     // TODO handle node selection via Revery
@@ -230,8 +281,8 @@ for now just add multiple forces; it's suboptimal but we don't care
 
             // Draw the graph
             open World
-            let nodes = List.map(Draw.node(state.selectedNode), NodeMap.bindings(state.data.nodes));
-            let edges = List.map(e => Draw.edge(ResolvedEdge.resolve(state, e)), get_edges(state.data));
+            let nodes = draw_nodes(world)
+            let edges = draw_edges(world)
             let items = List.append(nodes, edges);
 
             // Computes the coordinates of the click relative to the parent element

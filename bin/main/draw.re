@@ -2,15 +2,21 @@ open Revery
 open Revery.UI
 open Common
 open Etymology
-open World
+open Shared
 
-let node = (oSel, (id, node)) => {
+module ResolvedEdge = {
+    type t = {
+        label: string,
+        src_id: Shared.Id.t,
+        dest_id: Shared.Id.t,
+        src_pos: Vec.t,
+        dest_pos: Vec.t
+    }
+}
+
+let node = (pos, label, selected) => {
     open Vec;
-    let bgColor = switch(oSel) {
-        | Some((id', _)) => if(id' == id) {Colors.red} else {Colors.azure}
-        | None => Colors.azure
-    };
-    let pos = node.Node.pos;
+    let bgColor = if(selected) Colors.red else Colors.azure;
     let style = Style.[
         backgroundColor(bgColor),
         position(`Absolute),
@@ -21,7 +27,6 @@ let node = (oSel, (id, node)) => {
         border(Revery.Colors.black, 4),
         borderRadius(4.)
     ];
-    let label = Node.to_string(node);
     <View style=style>
         <Text style=Styles.text text=label />
     </View>
@@ -40,7 +45,7 @@ let self_loop = (pos, bgColor) => {
     </View>
 }
 
-let standard_edge = (edge, pos, v) => {
+let standard_edge = (label, pos, v) => {
     open Vec
     let len = abs(v);
     let thickness = 4.;
@@ -59,8 +64,6 @@ let standard_edge = (edge, pos, v) => {
         width(int_of_float(len)),
         height(int_of_float(thickness))
     ];
-    let label =
-        String.concat("", ["      ", Graphs.EdgeId.string_of(edge)]);
     <View style=style>
         <Text text=label style=Styles.text />
     </View>
@@ -69,10 +72,8 @@ let standard_edge = (edge, pos, v) => {
 let edge = edge => {
     open Vec;
     open ResolvedEdge
-    let src = edge.src;
-    let dest = edge.dest;
-    let src_pos = src.pos;
-    let dest_pos = dest.pos;
+    let src_pos = edge.src_pos;
+    let dest_pos = edge.dest_pos;
     let v = sub(dest_pos, src_pos);
 
     // TODO draw multiple loops nicely
@@ -82,6 +83,6 @@ let edge = edge => {
     } else if (abs(v) < 50.) {
         self_loop(src_pos, Colors.green)
     } else {
-        standard_edge(edge.id, src_pos, v)
+        standard_edge(edge.label, src_pos, v)
     }
 }

@@ -2,6 +2,7 @@ open Common
 open Graphs
 open Graph
 open Physics
+open Shared
 
 module Node = Lambda.Graph.Node
 
@@ -33,7 +34,7 @@ charges
 physics constants?
 */
 
-module Id = Id.MkInt ()
+module Id = Shared.Id
 
 module Edge = {
     type t = {
@@ -115,6 +116,11 @@ type t = {
     entities: list(Id.t)
 }
 
+let empty = {
+    components: EntityMaps.empty,
+    entities: []
+}
+
 module Entity = {
     type t = {
         position: option(Vec.t),
@@ -144,7 +150,7 @@ module Update = {
 }
 
 let get_entity_comp = (id, cs:EntityMaps.t) => {
-    let entity = Entity.{
+    Entity.{
         position: EntityMap.find_opt(id, cs.position),
         node: EntityMap.find_opt(id, cs.node),
         edge: EntityMap.find_opt(id, cs.edge),
@@ -153,14 +159,13 @@ let get_entity_comp = (id, cs:EntityMaps.t) => {
         physical: EntityMap.find_opt(id, cs.physical),
         forces: EntityMap.find_opt(id, cs.forces),
         selected: EntityMap.find_opt(id, cs.selected)
-    };
-    (id, entity)
+    }
 }
 
 let get_entity = (id, w) => get_entity_comp(id, w.components)
 
 let efilter = (p, w) => {
-    List.map(id => get_entity(id, w), w.entities)
+    List.map(id => (id, get_entity(id, w)), w.entities)
     |> List.filter(((_, e)) => p(e))
 }
 
@@ -235,9 +240,8 @@ let update_components = (id, e, cs) => {
 
 let update_entity = (id, e, w) => {...w, components: update_components(id, e, w.components)}
 
-
 let emap = (f, w) => {
-    let update = (cs, id) => update_components(id, f(snd(get_entity_comp(id, cs))), cs);
+    let update = (cs, id) => update_components(id, f(get_entity_comp(id, cs)), cs);
     {...w, components: List.fold_left(update, w.components, w.entities)}
 }
 
