@@ -32,6 +32,20 @@ module Main {
         | Step
         | Tick;
 
+    let deselect_all = world => {
+        open World
+        emap(e => {
+            switch(e.selected) {
+                | Some(()) => EntityUpdate.{
+                    ...default,
+                    selected: Unset
+                }
+                | None => EntityUpdate.default
+            }
+        }, world)
+    }
+
+
     // needs: selection
     // modifies: selection
     // creates entity with: edge, lambda_child
@@ -63,14 +77,15 @@ module Main {
             }
             | _ => world
         };
+        let world'' = deselect_all(world')
         let update = EntityUpdate.{...default, selected: Set(())}
-        update_entity(node_id, update, world')
+        update_entity(node_id, update, world'')
     }
 
     // needs: nothing
     // modifies: selection
     // creates entity with: node, lambda_term, position, physical, forces
-    let mk_node = pos => {
+    let add_node = (pos, world) => {
         print_endline("mk_node");
         open World
         open Vec
@@ -81,7 +96,7 @@ module Main {
         let g = 1e-3;
         // TODO maybe we should attach hidden edges to all other nodes to model coloumb forces?
         let drag_force = p => Vec.scale(p.Physics.Point.velocity, -. d);
-        {
+        let entity = {
             ...Entity.default,
             node: Some(()),
             position: Some(pos),
@@ -101,6 +116,9 @@ module Main {
             }),
             selected: Some(())
         }
+        world
+            |> deselect_all
+            |> add_entity(entity)
     }
 
     // TODO get rid of this
@@ -261,7 +279,7 @@ for now just add multiple forces; it's suboptimal but we don't care
                 switch (nearby) {
                     | [(node_id, _)] => add_edge(node_id, world)
                     | _ => {
-                        let w' = add_entity(mk_node(pos), world);
+                        let w' = add_node(pos, world);
                         debug(w');
                         w'
                     }
