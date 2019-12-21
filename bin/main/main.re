@@ -1,7 +1,7 @@
 let init (app: Revery.App.t) = {
     print_endline("init");
     let window = Revery.App.createWindow(app, "Ecats");
-    let element = <Root.Main world=World.empty />
+    let element = <Root.Main initialWorld=World.empty />
     // NOTE renderFunc can be used to replace the root element
     let _renderFunc = Revery.UI.start(window, element);
 }

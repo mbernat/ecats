@@ -188,6 +188,7 @@ let add_components = (id, e, cs) => {
 }
 
 let add_entity = (e, w) => {
+    print_endline("adding entity")
     let id = Id.allocate();
     {
         components: add_components(id, e, w.components),

@@ -7,7 +7,11 @@ open Etymology
 open Graph
 open Data
 
-let tick = 1000. /. 60.;
+let fps = 1.;
+let tick = 1000. /. fps;
+
+let debug = world => List.length(world.World.entities) |> string_of_int |> print_endline;
+
 
 /*
 
@@ -32,6 +36,7 @@ module Main {
     // modifies: selection
     // creates entity with: edge, lambda_child
     let add_edge = (node_id, world) => {
+        print_endline("add_edge")
         open World
         let k = 5e-5;
         let l = 1e2;
@@ -66,6 +71,7 @@ module Main {
     // modifies: selection
     // creates entity with: node, lambda_term, position, physical, forces
     let mk_node = pos => {
+        print_endline("mk_node");
         open World
         open Vec
         let id = NodeId.allocate();
@@ -206,9 +212,11 @@ for now just add multiple forces; it's suboptimal but we don't care
     }
 
     let draw_nodes = world => {
+        print_endline("draw_nodes");
         open World
         let nodes = efilter(e => e.node != None && e.position != None, world);
         List.map(((id, node)) => {
+            print_endline("drawing a node")
             open Entity
             let position = from_option(node.position);
             let label = Shared.Id.string_of(id);
@@ -252,7 +260,11 @@ for now just add multiple forces; it's suboptimal but we don't care
                 let nearby = efilter(f, world);
                 switch (nearby) {
                     | [(node_id, _)] => add_edge(node_id, world)
-                    | _ => add_entity(mk_node(pos), world)
+                    | _ => {
+                        let w' = add_entity(mk_node(pos), world);
+                        debug(w');
+                        w'
+                    }
                 }
             }
             | Tick => step_physics(world)
@@ -260,13 +272,13 @@ for now just add multiple forces; it's suboptimal but we don't care
         };
 
     let component = React.component("Main");
-    let createElement = (~children as _, ~world, ()) =>
+    let createElement = (~children as _, ~initialWorld, ()) =>
         component(hooks => {
             let (refOption, setRefOption, hooks) =
                 Hooks.state(None, hooks);
-            let (state, dispatch, hooks) =
+            let (world, dispatch, hooks) =
                 Hooks.reducer(
-                    ~initialState=world,
+                    ~initialState=initialWorld,
                     reducer,
                     hooks
                 );
@@ -281,6 +293,8 @@ for now just add multiple forces; it's suboptimal but we don't care
 
             // Draw the graph
             open World
+            debug(world);
+            let _ = emap(e => {print_endline("entity"); EntityUpdate.default}, world);
             let nodes = draw_nodes(world)
             let edges = draw_edges(world)
             let items = List.append(nodes, edges);
